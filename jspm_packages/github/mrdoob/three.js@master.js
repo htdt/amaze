@@ -1,0 +1,1 @@
+module.exports = require("github:mrdoob/three.js@master/build/three");

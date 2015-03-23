@@ -1,0 +1,1 @@
+module.exports = require("npm:three-orbit-controls@69.0.4/index");

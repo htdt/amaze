@@ -1,0 +1,1 @@
+module.exports = require("npm:three-first-person-controls@0.2.1/index");
