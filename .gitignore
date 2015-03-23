@@ -1,2 +1,4 @@
 .DS_Store
 node_modules
+jspm_packages
+!jspm_packages/traceur-runtime.js
