@@ -1,13 +1,20 @@
 {
-  "jspm": {
-    "directories": {
-      "lib": "proj",
-      "packages": "jspm_packages"
-    },
-    "dependencies": {
-      "three-first-person-controls": "npm:three-first-person-controls@^0.2.1",
-      "three-orbit-controls": "npm:three-orbit-controls@^69.0.4",
-      "three.js": "github:mrdoob/three.js@master"
-    }
+  "name": "amaze",
+  "version": "1.0.0",
+  "description": "interactive 3d experiment",
+  "main": "src/main.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "webpack-dev-server --progress --colors",
+    "build": "webpack"
+  },
+  "author": "crush",
+  "license": "MIT",
+  "devDependencies": {
+    "webpack": "^1.10.5"
+  },
+  "dependencies": {
+    "p2": "^0.7.0",
+    "three": "^0.71.0"
   }
 }

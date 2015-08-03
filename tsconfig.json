@@ -1,0 +1,27 @@
+{
+  "version": "1.5.0",
+  "compilerOptions": {
+    "target": "es5",
+    "module": "commonjs",
+    "declaration": false,
+    "noImplicitAny": false,
+    "removeComments": true,
+    "noLib": false,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "sourceMap": true,
+    "listFiles": true
+  },
+  "files": [
+    "node_modules/typescript/bin/lib.dom.d.ts",
+    "typings/tsd.d.ts",
+    "typings_custom/p2.d.ts",
+    "typings_custom/glitch.d.ts",
+    
+    "src/controls.ts",
+    "src/display.ts",
+    "src/physics.ts",
+    "src/main.ts",
+    "src/player.ts"
+  ]
+}
