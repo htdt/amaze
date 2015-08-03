@@ -68,7 +68,7 @@ export default class Display3D{
   static scale = 50;
 
   scene: THREE.Scene;
-  camera: THREE.Camera;
+  camera: THREE.PerspectiveCamera;
   renderer: THREE.WebGLRenderer;
   animator: Animator;
 
@@ -88,16 +88,21 @@ export default class Display3D{
     else{
       w = window.innerWidth;
       h = window.innerHeight;
+      window.addEventListener('resize', () => {
+        this.camera.aspect = window.innerWidth / window.innerHeight;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+      }, false);
     }
 
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(75, w/h, 1, 1000);
     this.camera.position.y = Display3D.scale;
     this.renderer = new THREE.WebGLRenderer();
-    this.renderer.setPixelRatio( window.devicePixelRatio );
+    //this.renderer.setPixelRatio( window.devicePixelRatio );
     this.renderer.setSize( w, h );
     this.renderer.setClearColor(0xffffff);
-    this.scene.fog = new THREE.FogExp2(0xffffff,0.006);
+    this.scene.fog = new THREE.FogExp2(0xffffff,0.003);
     this.renderer.shadowMapEnabled = true;
     this.renderer.shadowMapType = THREE.PCFShadowMap;
     document.body.appendChild(this.renderer.domElement);
@@ -162,7 +167,7 @@ export default class Display3D{
     this.shadowLight.position.x = w*Display3D.scale/2;
     this.shadowLight.position.z = h*Display3D.scale/2;
 
-    this.addDiffusedDust(w,h);
+    //this.addDiffusedDust(w,h);
   }
 
   addWall(x:number, y:number, glitchy:boolean=false): THREE.Mesh {

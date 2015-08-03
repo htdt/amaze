@@ -1,10 +1,28 @@
 import Physics from "./physics";
 import Display3D from "./display";
-import Player from "./player";
+import Controls from "./controls";
 
 class WorldObject{
-  constructor(private view: THREE.Mesh, private body: p2.Body){}
+  constructor(public view: THREE.Mesh, public body: p2.Body){}
   up(display: Display3D){display.moveObject(this.view, this.body);}
+}
+
+class Player extends WorldObject{
+  keyb: Controls;
+  angle: number;
+
+  constructor(view: THREE.Mesh, body: p2.Body, pos: number[]){
+    super(view, body);
+    this.keyb = new Controls();
+    this.angle = 0;
+    this.body.position = pos;
+  }
+
+  move(dt: number){
+    this.angle+=dt*this.keyb.turn/500;
+    this.body.force[0] = Math.cos(this.angle)*10*this.keyb.up;
+    this.body.force[1] = Math.sin(this.angle)*10*this.keyb.up;
+  }
 }
 
 class World{
@@ -13,20 +31,14 @@ class World{
   display: Display3D;
   me: Player;
   prevLoopTS: number;
-  galaxies: WorldObject[];
+  worldObjects: WorldObject[];
 
   constructor(){
     this.phys = new Physics();
     this.display = new Display3D();
-    this.me = new Player(this.phys, this.display, [2,2], () => {
-      let {animation, view } = this.display.createGalaxy(this.display.player.position);
-      animation.then(() => {
-        let body = this.phys.createGalaxy(this.phys.player.position);
-        this.galaxies.push(new WorldObject(view, body));
-      });
-    });
+    this.me = new Player(this.display.player, this.phys.player, [2,2]);
 
-    this.galaxies = [];
+    this.worldObjects = [this.me];
 
     this.generateMaze();
     this.buildWallsAndFloor();
@@ -36,10 +48,10 @@ class World{
   mainLoop(ts = null) {
     let dt = this.prevLoopTS ? ts - this.prevLoopTS : 1000/60;
 
-    this.me.step(dt);
     this.phys.world.step(dt/1000);
-    this.display.moveObject(this.display.player, this.me.body);
-    this.galaxies.forEach(g=>g.up(this.display));
+    //this.display.moveObject(this.display.player, this.me.body);
+    this.me.move(dt);
+    this.worldObjects.forEach(g=>g.up(this.display));
     this.display.moveCamera(this.me.angle);
     this.display.render();
 
@@ -166,7 +178,10 @@ class World{
       once: true,
       func: () => {
         let pos = d.position.clone();
-        let physPos = p.position.slice(); //array clone
+        let physPos = [];
+        physPos[0] = p.position[0];
+        physPos[1] = p.position[1];
+        //.slice(0); //array clone
         this.phys.world.removeBody(p);
         this.display.scene.remove(d);
         this.display.animator.stop(d);
@@ -175,11 +190,11 @@ class World{
           let {animation, view } = this.display.createGalaxy(pos);
           animation.then(() => {
             let body = this.phys.createGalaxy(physPos);
-            this.galaxies.push(new WorldObject(view, body));
+            this.worldObjects.push(new WorldObject(view, body));
           });
         });
     }});
   }
 }
 
-let w = new World();
+new World();

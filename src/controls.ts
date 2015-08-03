@@ -1,27 +1,37 @@
 export default class Controls{
-  left: boolean;
-  right: boolean;
-  up: boolean;
-  spaceFunc: Function;
+  turn: number;
+  up: number;
   
-  constructor(spaceFunc){
-    this.left = false;
-    this.right = false;
-    this.up = false;
-    this.spaceFunc = spaceFunc;
+  constructor(){
+    this.turn = 0;
+    this.up = 0;
 
+    if (!this.isMobile()) this.listenDesktopEvents();
+    else this.listenMobileEvents();
+  }
+
+  listenDesktopEvents(){
     window.onkeydown = (e) => {
-      if (e.keyCode == 37) this.left = true;
-      if (e.keyCode == 38) this.up = true;
-      if (e.keyCode == 39) this.right = true;
+      if (e.keyCode == 37) this.turn = -1;
+      if (e.keyCode == 38) this.up = 1;
+      if (e.keyCode == 39) this.turn = 1;
     }
 
     window.onkeyup = (e) => {
-      if (e.keyCode == 37) this.left = false;
-      if (e.keyCode == 38) this.up = false;
-      if (e.keyCode == 39) this.right = false;
-      if (e.keyCode == 32) this.spaceFunc();
+      if (e.keyCode == 37 || e.keyCode == 39) this.turn = 0;
+      if (e.keyCode == 38) this.up = 0;
     }
   }
 
+  listenMobileEvents(){
+    window.addEventListener("deviceorientation", (e) => {
+      this.turn = e.beta/45;
+      if (e.gamma<0 && e.gamma>=-60) this.up = (e.gamma+60)/60;
+      else this.up = 0;
+    }, true);
+  }
+
+  isMobile(): boolean {
+    return typeof window.orientation !== 'undefined';
+  }
 }

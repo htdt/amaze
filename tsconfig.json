@@ -21,7 +21,6 @@
     "src/controls.ts",
     "src/display.ts",
     "src/physics.ts",
-    "src/main.ts",
-    "src/player.ts"
+    "src/main.ts"
   ]
 }

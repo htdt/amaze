@@ -44,9 +44,15 @@
 /* 0 */
 /***/ function(module, exports, __webpack_require__) {
 
+	var __extends = (this && this.__extends) || function (d, b) {
+	    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+	    function __() { this.constructor = d; }
+	    __.prototype = b.prototype;
+	    d.prototype = new __();
+	};
 	var physics_1 = __webpack_require__(1);
 	var display_1 = __webpack_require__(63);
-	var player_1 = __webpack_require__(72);
+	var controls_1 = __webpack_require__(72);
 	var WorldObject = (function () {
 	    function WorldObject(view, body) {
 	        this.view = view;
@@ -55,19 +61,27 @@
 	    WorldObject.prototype.up = function (display) { display.moveObject(this.view, this.body); };
 	    return WorldObject;
 	})();
+	var Player = (function (_super) {
+	    __extends(Player, _super);
+	    function Player(view, body, pos) {
+	        _super.call(this, view, body);
+	        this.keyb = new controls_1.default();
+	        this.angle = 0;
+	        this.body.position = pos;
+	    }
+	    Player.prototype.move = function (dt) {
+	        this.angle += dt * this.keyb.turn / 500;
+	        this.body.force[0] = Math.cos(this.angle) * 10 * this.keyb.up;
+	        this.body.force[1] = Math.sin(this.angle) * 10 * this.keyb.up;
+	    };
+	    return Player;
+	})(WorldObject);
 	var World = (function () {
 	    function World() {
-	        var _this = this;
 	        this.phys = new physics_1.default();
 	        this.display = new display_1.default();
-	        this.me = new player_1.default(this.phys, this.display, [2, 2], function () {
-	            var _a = _this.display.createGalaxy(_this.display.player.position), animation = _a.animation, view = _a.view;
-	            animation.then(function () {
-	                var body = _this.phys.createGalaxy(_this.phys.player.position);
-	                _this.galaxies.push(new WorldObject(view, body));
-	            });
-	        });
-	        this.galaxies = [];
+	        this.me = new Player(this.display.player, this.phys.player, [2, 2]);
+	        this.worldObjects = [this.me];
 	        this.generateMaze();
 	        this.buildWallsAndFloor();
 	        this.mainLoop();
@@ -76,10 +90,9 @@
 	        var _this = this;
 	        if (ts === void 0) { ts = null; }
 	        var dt = this.prevLoopTS ? ts - this.prevLoopTS : 1000 / 60;
-	        this.me.step(dt);
 	        this.phys.world.step(dt / 1000);
-	        this.display.moveObject(this.display.player, this.me.body);
-	        this.galaxies.forEach(function (g) { return g.up(_this.display); });
+	        this.me.move(dt);
+	        this.worldObjects.forEach(function (g) { return g.up(_this.display); });
 	        this.display.moveCamera(this.me.angle);
 	        this.display.render();
 	        this.prevLoopTS = ts;
@@ -138,7 +151,9 @@
 	            once: true,
 	            func: function () {
 	                var pos = d.position.clone();
-	                var physPos = p.position.slice();
+	                var physPos = [];
+	                physPos[0] = p.position[0];
+	                physPos[1] = p.position[1];
 	                _this.phys.world.removeBody(p);
 	                _this.display.scene.remove(d);
 	                _this.display.animator.stop(d);
@@ -146,14 +161,14 @@
 	                    var _a = _this.display.createGalaxy(pos), animation = _a.animation, view = _a.view;
 	                    animation.then(function () {
 	                        var body = _this.phys.createGalaxy(physPos);
-	                        _this.galaxies.push(new WorldObject(view, body));
+	                        _this.worldObjects.push(new WorldObject(view, body));
 	                    });
 	                });
 	            } });
 	    };
 	    return World;
 	})();
-	var w = new World();
+	new World();
 	//# sourceMappingURL=main.js.map
 
 /***/ },
@@ -175,7 +190,7 @@
 	        this.wallMaterial = new p2.Material();
 	        this.galaxyMaterial = new p2.Material();
 	        playerShape.material = playerMaterial;
-	        this.world.addContactMaterial(new p2.ContactMaterial(this.wallMaterial, playerMaterial, { restitution: 1, stiffness: Number.MAX_VALUE }));
+	        this.world.addContactMaterial(new p2.ContactMaterial(this.wallMaterial, playerMaterial, { restitution: .6, stiffness: Number.MAX_VALUE }));
 	        this.world.addContactMaterial(new p2.ContactMaterial(this.wallMaterial, this.galaxyMaterial, { restitution: 1, stiffness: 32 }));
 	        this.world.addContactMaterial(new p2.ContactMaterial(playerMaterial, this.galaxyMaterial, { restitution: 1, stiffness: 32 }));
 	        this.world.on("impact", function (evt) {
@@ -14119,6 +14134,7 @@
 	})();
 	var Display3D = (function () {
 	    function Display3D() {
+	        var _this = this;
 	        var w, h;
 	        if (typeof PRODUCTION == 'undefined') {
 	            w = 800;
@@ -14127,15 +14143,19 @@
 	        else {
 	            w = window.innerWidth;
 	            h = window.innerHeight;
+	            window.addEventListener('resize', function () {
+	                _this.camera.aspect = window.innerWidth / window.innerHeight;
+	                _this.camera.updateProjectionMatrix();
+	                _this.renderer.setSize(window.innerWidth, window.innerHeight);
+	            }, false);
 	        }
 	        this.scene = new THREE.Scene();
 	        this.camera = new THREE.PerspectiveCamera(75, w / h, 1, 1000);
 	        this.camera.position.y = Display3D.scale;
 	        this.renderer = new THREE.WebGLRenderer();
-	        this.renderer.setPixelRatio(window.devicePixelRatio);
 	        this.renderer.setSize(w, h);
 	        this.renderer.setClearColor(0xffffff);
-	        this.scene.fog = new THREE.FogExp2(0xffffff, 0.006);
+	        this.scene.fog = new THREE.FogExp2(0xffffff, 0.003);
 	        this.renderer.shadowMapEnabled = true;
 	        this.renderer.shadowMapType = THREE.PCFShadowMap;
 	        document.body.appendChild(this.renderer.domElement);
@@ -14184,7 +14204,6 @@
 	        this.light.position.z = h * Display3D.scale / 2;
 	        this.shadowLight.position.x = w * Display3D.scale / 2;
 	        this.shadowLight.position.z = h * Display3D.scale / 2;
-	        this.addDiffusedDust(w, h);
 	    };
 	    Display3D.prototype.addWall = function (x, y, glitchy) {
 	        if (glitchy === void 0) { glitchy = false; }
@@ -50119,78 +50138,47 @@
 
 /***/ },
 /* 72 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var controls_1 = __webpack_require__(73);
-	var Player = (function () {
-	    function Player(body, display, pos, fire) {
-	        var _this = this;
-	        this.keyb = new controls_1.default(function () {
-	            if (_this.charged) {
-	                fire();
-	                _this.charge();
-	            }
-	        });
-	        this.angle = 0;
-	        this.body = body.player;
-	        this.body.position = pos;
-	        this.display = display;
-	        this.charge();
-	    }
-	    Player.prototype.charge = function () {
-	        var _this = this;
-	        this.charged = false;
-	        this.display.animator.play({
-	            func: function (dt) { return _this.display.playerMaterial.color.setRGB(1 - dt, 1 - dt, 1 - dt); },
-	            duration: Player.CHARGE_TIME })
-	            .then(function () { return _this.charged = true; });
-	    };
-	    Player.prototype.step = function (dt) {
-	        if (this.keyb.left)
-	            this.angle -= dt / 500;
-	        if (this.keyb.right)
-	            this.angle += dt / 500;
-	        if (this.keyb.up) {
-	            this.body.force[0] = Math.cos(this.angle) * 10;
-	            this.body.force[1] = Math.sin(this.angle) * 10;
-	        }
-	    };
-	    Player.CHARGE_TIME = 1000;
-	    return Player;
-	})();
-	exports.default = Player;
-	//# sourceMappingURL=player.js.map
-
-/***/ },
-/* 73 */
 /***/ function(module, exports) {
 
 	var Controls = (function () {
-	    function Controls(spaceFunc) {
+	    function Controls() {
+	        this.turn = 0;
+	        this.up = 0;
+	        if (!this.isMobile())
+	            this.listenDesktopEvents();
+	        else
+	            this.listenMobileEvents();
+	    }
+	    Controls.prototype.listenDesktopEvents = function () {
 	        var _this = this;
-	        this.left = false;
-	        this.right = false;
-	        this.up = false;
-	        this.spaceFunc = spaceFunc;
 	        window.onkeydown = function (e) {
 	            if (e.keyCode == 37)
-	                _this.left = true;
+	                _this.turn = -1;
 	            if (e.keyCode == 38)
-	                _this.up = true;
+	                _this.up = 1;
 	            if (e.keyCode == 39)
-	                _this.right = true;
+	                _this.turn = 1;
 	        };
 	        window.onkeyup = function (e) {
-	            if (e.keyCode == 37)
-	                _this.left = false;
+	            if (e.keyCode == 37 || e.keyCode == 39)
+	                _this.turn = 0;
 	            if (e.keyCode == 38)
-	                _this.up = false;
-	            if (e.keyCode == 39)
-	                _this.right = false;
-	            if (e.keyCode == 32)
-	                _this.spaceFunc();
+	                _this.up = 0;
 	        };
-	    }
+	    };
+	    Controls.prototype.listenMobileEvents = function () {
+	        var _this = this;
+	        window.addEventListener("deviceorientation", function (e) {
+	            _this.turn = e.beta / 45;
+	            if (e.gamma < 0 && e.gamma >= -60)
+	                _this.up = (e.gamma + 60) / 60;
+	            else
+	                _this.up = 0;
+	        }, true);
+	    };
+	    Controls.prototype.isMobile = function () {
+	        return typeof window.orientation !== 'undefined';
+	    };
 	    return Controls;
 	})();
 	exports.default = Controls;
