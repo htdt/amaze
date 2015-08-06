@@ -2,6 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>amaze!</title>
   </head>
   <style>
@@ -10,12 +11,13 @@
         margin: 0px;
         overflow: hidden;
       }
-      canvas { width: 100%; height: 100% }
+      canvas {width: 100%; height: 100%;}
   </style>
   <body>
-  <script type="text/javascript">
-    var PRODUCTION = true;
-  </script>
+    <script type="text/javascript">
+      var PRODUCTION = true;
+      (function(){var script=document.createElement('script');script.onload=function(){var stats=new Stats();stats.domElement.style.cssText='position:fixed;left:0;top:0;z-index:10000';document.body.appendChild(stats.domElement);requestAnimationFrame(function loop(){stats.update();requestAnimationFrame(loop)});};script.src='//rawgit.com/mrdoob/stats.js/master/build/stats.min.js';document.head.appendChild(script);})()
+    </script>
     <script type="text/javascript" src="bundle.js" charset="utf-8"></script>
   </body>
 </html>

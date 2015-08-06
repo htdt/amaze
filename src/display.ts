@@ -73,17 +73,17 @@ export default class Display3D{
   animator: Animator;
 
   light: THREE.Light;
-  shadowLight: THREE.DirectionalLight;
+  //shadowLight: THREE.DirectionalLight;
   playerMaterial: THREE.MeshPhongMaterial;
   player: THREE.Mesh;
   protoGalaxy: THREE.Mesh;
   glitch: boolean;
   glitchComposer: THREE.EffectComposer;
+  morphingSphere: THREE.Mesh;
 
 
   constructor(){
     let w,h;
-
     if (typeof PRODUCTION == 'undefined') {w=800; h=300;}
     else{
       w = window.innerWidth;
@@ -98,13 +98,13 @@ export default class Display3D{
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(75, w/h, 1, 1000);
     this.camera.position.y = Display3D.scale;
-    this.renderer = new THREE.WebGLRenderer();
-    //this.renderer.setPixelRatio( window.devicePixelRatio );
+    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    this.renderer.setPixelRatio( window.devicePixelRatio );
     this.renderer.setSize( w, h );
     this.renderer.setClearColor(0xffffff);
-    this.scene.fog = new THREE.FogExp2(0xffffff,0.003);
-    this.renderer.shadowMapEnabled = true;
-    this.renderer.shadowMapType = THREE.PCFShadowMap;
+    this.scene.fog = new THREE.FogExp2(0xffffff,0.004);
+    //this.renderer.shadowMapEnabled = true;
+    //this.renderer.shadowMapType = THREE.PCFShadowMap;
     document.body.appendChild(this.renderer.domElement);
 
     this.animator = new Animator();
@@ -115,6 +115,7 @@ export default class Display3D{
     this.initLight();
     this.initProtoGalaxy();
     this.initGlitch();
+    this.initMorphingSphere();
   }
 
   initLight(): void{
@@ -124,6 +125,7 @@ export default class Display3D{
     this.light.position.y = 50*Display3D.scale;
     this.scene.add(this.light);
 
+    /*
     this.shadowLight = new THREE.DirectionalLight(0,1);
     this.shadowLight.position.set(0,50*Display3D.scale,0);
     this.shadowLight.castShadow = true;
@@ -133,7 +135,7 @@ export default class Display3D{
     this.shadowLight.shadowMapHeight = 1024;
     //this.shadowLight.shadowCascade = true;
     this.shadowLight.target = this.player;
-    this.scene.add(this.shadowLight);
+    this.scene.add(this.shadowLight);*/
   }
 
   initPlayer(): void{
@@ -164,39 +166,21 @@ export default class Display3D{
 
     this.light.position.x = w*Display3D.scale/2;
     this.light.position.z = h*Display3D.scale/2;
-    this.shadowLight.position.x = w*Display3D.scale/2;
-    this.shadowLight.position.z = h*Display3D.scale/2;
+    //this.shadowLight.position.x = w*Display3D.scale/2;
+    //this.shadowLight.position.z = h*Display3D.scale/2;
 
-    //this.addDiffusedDust(w,h);
+    this.addDiffusedDust(w,h);
   }
 
-  addWall(x:number, y:number, glitchy:boolean=false): THREE.Mesh {
-    let wallMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent:true });
+  addWall(x:number, y:number): THREE.Mesh {
+    let wallMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff });
     let curWall = new THREE.Mesh(
       new THREE.BoxGeometry(Display3D.scale, Display3D.scale, Display3D.scale),
       wallMaterial
     );
-    curWall.receiveShadow = true;
     curWall.position.x = x*Display3D.scale;
     curWall.position.z = y*Display3D.scale;
-    //if (glitchy) curWall.castShadow = true;
     this.scene.add(curWall);
-
-    if (glitchy) this.animator.play({func: dt => {
-        if (dt==1){
-          if (Math.random()>.8)
-            curWall.rotation.set(Math.random()*2*Math.PI, Math.random()*2*Math.PI, Math.random()*2*Math.PI);
-          
-          if (Math.random()>.8)
-            curWall.position.y = (Math.random()-.5)*Display3D.scale/2;
-
-          /*if (Math.random()>.8){
-            let s = Math.random()/2+.5;
-            curWall.scale.set(s,s,s);}*/
-
-        }
-      }, duration: 100, loop: true, object: curWall});
-
     return curWall;
   }
 
@@ -255,12 +239,11 @@ export default class Display3D{
     for (let i=0;i<20;i++){
       let a = Math.random()*Math.PI;
       let b = Math.random()*Math.PI;
-      let s1 = Math.random()*Display3D.scale/5;
+      let s1 = Math.random()*Display3D.scale/10;
       let s2 = (Math.random()+.5)*Display3D.scale;
-
       geometry.vertices.push(
-        sphericalTo3d(a, b, s1),
-        sphericalTo3d(a, b, s2)
+        (new THREE.Vector3()).fromArray(sphericalTo3d(a, b, s1)),
+        (new THREE.Vector3()).fromArray(sphericalTo3d(a, b, s2))
       );
     }
 
@@ -275,7 +258,7 @@ export default class Display3D{
     return {
       animation: this.animator.play({
         func: dt => {
-          let ql = 1/dt;//dt*50+1;
+          let ql = dt*50+1;
           lines.scale.set(ql, ql, ql);
           
           let qg = dt*dt*dt;
@@ -325,6 +308,98 @@ export default class Display3D{
       loop: true});
   }
 
+  generateSphere(vertices, ilen, klen, rr){
+    for (let i = 0; i < ilen; i++)
+    for (let k = 0; k < klen; k++)
+    {
+      let i1 = i==ilen-1 ? 0 : i+1;
+      let k1 = k==klen-1 ? 0 : k+1;
+
+      let q1 = i / ilen * Math.PI * 2;
+      let q2 = k / klen * Math.PI;
+      let q3 = i1 / ilen * Math.PI * 2;
+      let q4 = k1 / klen * Math.PI;
+
+      let v1 = sphericalTo3d(q1,q2, rr[i+k*ilen]);
+      let v2 = sphericalTo3d(q3,q2, rr[i1+k*ilen]);
+      let v3 = sphericalTo3d(q1,q4, rr[i+k1*ilen]);
+      let v4 = sphericalTo3d(q3,q4, rr[i1+k1*ilen]);
+
+      let offset = (k*ilen+i)*6*3;
+      
+      copy3array(vertices, offset, v3);
+      copy3array(vertices, offset+3, v2);
+      copy3array(vertices, offset+6, v1);
+      copy3array(vertices, offset+9, v2);
+      copy3array(vertices, offset+12, v3);
+      copy3array(vertices, offset+15, v4);
+    }
+  }
+  
+
+  initMorphingSphere(){
+    var ilen = 10, klen = 10, r = Display3D.scale/4;
+    var calm = true, morphing = false;
+    var rr = [];
+    var vertices = new Float32Array(ilen * klen * 6*3);
+    for (let i=0;i<ilen*klen;i++) rr[i] = r;
+    this.generateSphere(vertices, ilen, klen, rr);
+
+    var geometry = new THREE.BufferGeometry();
+    geometry.addAttribute( 'position', new THREE.BufferAttribute( vertices, 3 ) );
+    geometry.computeVertexNormals();
+
+    var material = new THREE.MeshPhongMaterial( {color: 0, shininess: 250});
+    this.morphingSphere = new THREE.Mesh(geometry, material);
+
+    var morph = () => {
+      morphing = true;
+      this.animator.play({
+      func: (dt) => {
+        if (Math.random()>.7){
+          for (let i = 0; i < ilen; i++)
+          for (let k = 0; k < klen; k++){
+            let q = calm ? dt*dt : 1 - dt*dt;
+            if (i%2 == 0 && k%2 == 0) rr[i+k*ilen] = r + Math.random()*r*q*2;
+            else rr[i+k*ilen] = r * (1-q/2);
+          }
+          this.generateSphere(vertices, ilen, klen, rr);
+          geometry.attributes['position'].needsUpdate = true;
+          geometry.computeVertexNormals();
+        }
+      },
+      duration: 2500,
+      object: this.morphingSphere
+    }).then(()=>{morphing=false;calm=!calm;});}
+
+
+    this.animator.play({
+      func: (dt) => {
+        if (dt==1 && Math.random()>.8 && !morphing) morph();
+      },
+      duration: 500,
+      loop: true
+    });
+  }
+
+  addMorphingSphere(x: number, y:number): THREE.Mesh{
+    let s = this.morphingSphere.clone();
+    s.position.x = x*Display3D.scale;
+    s.position.z = y*Display3D.scale;
+    this.scene.add(s);
+
+    this.animator.play({
+      func: (dt) => {
+        s.rotation.x = dt*Math.PI;
+        s.rotation.z = dt*Math.PI*2;
+      },
+      duration: 20000,
+      loop: true
+    });
+
+    return s;
+  }
+
   render(): void{
     this.animator.step();
     if (this.glitch) this.glitchComposer.render();
@@ -332,85 +407,17 @@ export default class Display3D{
   }
 }
 
-function sphericalTo3d(a,b,r): THREE.Vector3{
-  return new THREE.Vector3(
+function sphericalTo3d(a,b,r): number[]{
+  return [
     r * Math.cos(a) * Math.sin(b),
     r * Math.sin(a) * Math.sin(b),
     r * Math.cos(b)
-  );
+  ];
 }
 
-/*
-  wallCollapse(w: THREE.Mesh): Promise<any>{
-    w.position.y = Display3D.scale;
-    //w.rotation.set(0,0,0);
-    return this.delayedRecursion(w,1,12);
-  }
+function copy3array(a,offset,b){
+  a[offset] = b[0];
+  a[offset+1] = b[1];
+  a[offset+2] = b[2];
+}
 
-  delayedRecursion(obj, depth:number, maxdepth:number): Promise<any>{
-    if (depth >= maxdepth) return;
-    return this.animator.play({duration: 500}).then(() => {
-      var [a1,a2] = this.sliceObject(obj, depth);
-      depth++;
-      this.delayedRecursion(a1, depth, maxdepth);
-      return this.delayedRecursion(a2, depth, maxdepth);
-    });
-  }
-
-  sliceObject(w: THREE.Mesh, depth:number): THREE.Mesh[]{
-    //depth+=1;
-    let s = 1/(depth*depth);
-    w.scale.set(s,s,s);
-    let n = w.clone(), x, dt = Display3D.scale/depth*1.5;
-    switch (depth%3){
-      case 0:
-        x = new THREE.Vector3(dt,0,0);
-        break;
-      case 1:
-        x = new THREE.Vector3(0,0,dt);
-        break;
-      case 2:
-        x = new THREE.Vector3(0,dt,0);
-        break;
-    }
-
-    w.position.add(x);
-    n.position.sub(x);
-    this.scene.add(n);
-    return [w,n];
-  }
-*/
-/*
-createDust(pos: THREE.Vector3): Promise<any>{
-    let geometry = new THREE.Geometry();
-    let x=[];
-    for (let i=0;i<2000;i++){
-      for (let i1=0; i1<3; i1++) x[i1] = (Math.random()-.5) * Display3D.scale;
-      geometry.vertices.push(new THREE.Vector3(x[0], x[1], x[2]));
-    }
-    let material = new THREE.PointCloudMaterial({size: 1, color:0});
-
-    let particles = [];
-    let velocities = [];
-
-    for (let i=0;i<10;i++){
-      particles[i] = new THREE.PointCloud(geometry,material);
-      particles[i].position.set(pos.x, pos.y, pos.z);
-      this.scene.add(particles[i]);
-
-      velocities[i] = new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5);
-    }
-
-    return this.animator.play({
-      func: dt => {
-        var s = dt*10 + 1;
-        for (let i=0;i<particles.length;i++) {
-          velocities[i].setLength(dt*Display3D.scale);
-          particles[i].position.addVectors(pos, velocities[i]);
-          particles[i].scale.set(s, s, s);
-        }
-      },
-      duration: 1000})
-    .then(()=>particles.forEach((p)=>this.scene.remove(p)));
-  }
-  */

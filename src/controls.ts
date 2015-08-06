@@ -25,9 +25,15 @@ export default class Controls{
 
   listenMobileEvents(){
     window.addEventListener("deviceorientation", (e) => {
-      this.turn = e.beta/45;
-      if (e.gamma<0 && e.gamma>=-60) this.up = (e.gamma+60)/60;
-      else this.up = 0;
+      if(window.innerHeight > window.innerWidth){
+        this.turn = e.gamma/45;        
+        if (e.beta<60) this.up = (60-e.beta)/60;
+        else this.up = 0;
+      }else{
+        this.turn = e.beta/45;
+        if (e.gamma<0 && e.gamma>=-60) this.up = (e.gamma+60)/60;
+        else this.up = 0;
+      }
     }, true);
   }
 

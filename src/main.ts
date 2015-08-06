@@ -42,6 +42,7 @@ class World{
 
     this.generateMaze();
     this.buildWallsAndFloor();
+    this.addTarget(this.getRandomPosition());
     this.mainLoop();
   }
   
@@ -63,7 +64,7 @@ class World{
     this.maze =
       ["############################",
       "#      #    #             ##",
-      "#     *                    #",
+      "#                          #",
       "#          #####           #",
       "##         #   #    ##     #",
       "###    *      ##     #     #",
@@ -74,7 +75,7 @@ class World{
       "#    #                     #",
       "#      #    #             ##",
       "#                          #",
-      "#     *    #####           #",
+      "#          #####           #",
       "##         #   #    ##     #",
       "###           ##     #     #",
       "#           ###      #     #",
@@ -149,27 +150,32 @@ class World{
                     x, y = x_, y_
 */
 
-  getRandomPosition(): number[]{
+  getRandomPosition(){
     let w = this.maze[0].length, h = this.maze.length, x, y;
     do{
       x = Math.floor(Math.random()*w);
       y = Math.floor(Math.random()*h);
     }while(this.maze[y][x]!=" ");
-    return [x,y];
+    return {x,y};
   }
 
   buildWallsAndFloor(): void{
     let w = this.maze[0].length, h = this.maze.length;
 
     for (let y = 0; y < h; y++)
-    for (let x = 0; x < w; x++){
-      if (this.maze[y][x] == "#" || this.maze[y][x] == "*"){
-        var wallPhys = this.phys.addWall(x,y);
-        var wallView = this.display.addWall(x,y, this.maze[y][x] == "*");        
-        if (this.maze[y][x] == "*") this.destroyOnHit(wallPhys, wallView);
-      }
+    for (let x = 0; x < w; x++)
+    if (this.maze[y][x] == "#"){
+      this.phys.addWall(x,y);
+      this.display.addWall(x,y);
     }
+
     this.display.addEnvironment(w,h);
+  }
+
+  addTarget({x,y}){
+      var p = this.phys.addWall(x,y);
+      var o = this.display.addMorphingSphere(x,y);
+      this.destroyOnHit(p, o);
   }
 
   destroyOnHit(p:p2.Body, d:THREE.Mesh): void{
@@ -192,7 +198,7 @@ class World{
             let body = this.phys.createGalaxy(physPos);
             this.worldObjects.push(new WorldObject(view, body));
           });
-        });
+        }).then(()=>this.addTarget(this.getRandomPosition()));
     }});
   }
 }

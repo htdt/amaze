@@ -84,6 +84,7 @@
 	        this.worldObjects = [this.me];
 	        this.generateMaze();
 	        this.buildWallsAndFloor();
+	        this.addTarget(this.getRandomPosition());
 	        this.mainLoop();
 	    }
 	    World.prototype.mainLoop = function (ts) {
@@ -102,7 +103,7 @@
 	        this.maze =
 	            ["############################",
 	                "#      #    #             ##",
-	                "#     *                    #",
+	                "#                          #",
 	                "#          #####           #",
 	                "##         #   #    ##     #",
 	                "###    *      ##     #     #",
@@ -113,7 +114,7 @@
 	                "#    #                     #",
 	                "#      #    #             ##",
 	                "#                          #",
-	                "#     *    #####           #",
+	                "#          #####           #",
 	                "##         #   #    ##     #",
 	                "###           ##     #     #",
 	                "#           ###      #     #",
@@ -129,20 +130,23 @@
 	            x = Math.floor(Math.random() * w);
 	            y = Math.floor(Math.random() * h);
 	        } while (this.maze[y][x] != " ");
-	        return [x, y];
+	        return { x: x, y: y };
 	    };
 	    World.prototype.buildWallsAndFloor = function () {
 	        var w = this.maze[0].length, h = this.maze.length;
 	        for (var y = 0; y < h; y++)
-	            for (var x = 0; x < w; x++) {
-	                if (this.maze[y][x] == "#" || this.maze[y][x] == "*") {
-	                    var wallPhys = this.phys.addWall(x, y);
-	                    var wallView = this.display.addWall(x, y, this.maze[y][x] == "*");
-	                    if (this.maze[y][x] == "*")
-	                        this.destroyOnHit(wallPhys, wallView);
+	            for (var x = 0; x < w; x++)
+	                if (this.maze[y][x] == "#") {
+	                    this.phys.addWall(x, y);
+	                    this.display.addWall(x, y);
 	                }
-	            }
 	        this.display.addEnvironment(w, h);
+	    };
+	    World.prototype.addTarget = function (_a) {
+	        var x = _a.x, y = _a.y;
+	        var p = this.phys.addWall(x, y);
+	        var o = this.display.addMorphingSphere(x, y);
+	        this.destroyOnHit(p, o);
 	    };
 	    World.prototype.destroyOnHit = function (p, d) {
 	        var _this = this;
@@ -163,7 +167,7 @@
 	                        var body = _this.phys.createGalaxy(physPos);
 	                        _this.worldObjects.push(new WorldObject(view, body));
 	                    });
-	                });
+	                }).then(function () { return _this.addTarget(_this.getRandomPosition()); });
 	            } });
 	    };
 	    return World;
@@ -14152,12 +14156,11 @@
 	        this.scene = new THREE.Scene();
 	        this.camera = new THREE.PerspectiveCamera(75, w / h, 1, 1000);
 	        this.camera.position.y = Display3D.scale;
-	        this.renderer = new THREE.WebGLRenderer();
+	        this.renderer = new THREE.WebGLRenderer({ antialias: true });
+	        this.renderer.setPixelRatio(window.devicePixelRatio);
 	        this.renderer.setSize(w, h);
 	        this.renderer.setClearColor(0xffffff);
-	        this.scene.fog = new THREE.FogExp2(0xffffff, 0.003);
-	        this.renderer.shadowMapEnabled = true;
-	        this.renderer.shadowMapType = THREE.PCFShadowMap;
+	        this.scene.fog = new THREE.FogExp2(0xffffff, 0.004);
 	        document.body.appendChild(this.renderer.domElement);
 	        this.animator = new Animator();
 	        this.glitch = false;
@@ -14165,21 +14168,13 @@
 	        this.initLight();
 	        this.initProtoGalaxy();
 	        this.initGlitch();
+	        this.initMorphingSphere();
 	    }
 	    Display3D.prototype.initLight = function () {
 	        this.scene.add(new THREE.AmbientLight(0xaaaaaa));
 	        this.light = new THREE.PointLight(0xffffff, .5);
 	        this.light.position.y = 50 * Display3D.scale;
 	        this.scene.add(this.light);
-	        this.shadowLight = new THREE.DirectionalLight(0, 1);
-	        this.shadowLight.position.set(0, 50 * Display3D.scale, 0);
-	        this.shadowLight.castShadow = true;
-	        this.shadowLight.onlyShadow = true;
-	        this.shadowLight.shadowDarkness = .25;
-	        this.shadowLight.shadowMapWidth = 1024;
-	        this.shadowLight.shadowMapHeight = 1024;
-	        this.shadowLight.target = this.player;
-	        this.scene.add(this.shadowLight);
 	    };
 	    Display3D.prototype.initPlayer = function () {
 	        var _this = this;
@@ -14202,26 +14197,14 @@
 	        this.scene.add(plane);
 	        this.light.position.x = w * Display3D.scale / 2;
 	        this.light.position.z = h * Display3D.scale / 2;
-	        this.shadowLight.position.x = w * Display3D.scale / 2;
-	        this.shadowLight.position.z = h * Display3D.scale / 2;
+	        this.addDiffusedDust(w, h);
 	    };
-	    Display3D.prototype.addWall = function (x, y, glitchy) {
-	        if (glitchy === void 0) { glitchy = false; }
-	        var wallMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true });
+	    Display3D.prototype.addWall = function (x, y) {
+	        var wallMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff });
 	        var curWall = new THREE.Mesh(new THREE.BoxGeometry(Display3D.scale, Display3D.scale, Display3D.scale), wallMaterial);
-	        curWall.receiveShadow = true;
 	        curWall.position.x = x * Display3D.scale;
 	        curWall.position.z = y * Display3D.scale;
 	        this.scene.add(curWall);
-	        if (glitchy)
-	            this.animator.play({ func: function (dt) {
-	                    if (dt == 1) {
-	                        if (Math.random() > .8)
-	                            curWall.rotation.set(Math.random() * 2 * Math.PI, Math.random() * 2 * Math.PI, Math.random() * 2 * Math.PI);
-	                        if (Math.random() > .8)
-	                            curWall.position.y = (Math.random() - .5) * Display3D.scale / 2;
-	                    }
-	                }, duration: 100, loop: true, object: curWall });
 	        return curWall;
 	    };
 	    Display3D.prototype.moveObject = function (displayObj, physObj) {
@@ -14269,9 +14252,9 @@
 	        for (var i = 0; i < 20; i++) {
 	            var a = Math.random() * Math.PI;
 	            var b = Math.random() * Math.PI;
-	            var s1 = Math.random() * Display3D.scale / 5;
+	            var s1 = Math.random() * Display3D.scale / 10;
 	            var s2 = (Math.random() + .5) * Display3D.scale;
-	            geometry.vertices.push(sphericalTo3d(a, b, s1), sphericalTo3d(a, b, s2));
+	            geometry.vertices.push((new THREE.Vector3()).fromArray(sphericalTo3d(a, b, s1)), (new THREE.Vector3()).fromArray(sphericalTo3d(a, b, s2)));
 	        }
 	        var lines = new THREE.Line(geometry, material, THREE.LinePieces);
 	        lines.position.set(pos.x, pos.y, pos.z);
@@ -14282,7 +14265,7 @@
 	        return {
 	            animation: this.animator.play({
 	                func: function (dt) {
-	                    var ql = 1 / dt;
+	                    var ql = dt * 50 + 1;
 	                    lines.scale.set(ql, ql, ql);
 	                    var qg = dt * dt * dt;
 	                    g.scale.set(qg, qg, qg);
@@ -14322,6 +14305,88 @@
 	            duration: 50000,
 	            loop: true });
 	    };
+	    Display3D.prototype.generateSphere = function (vertices, ilen, klen, rr) {
+	        for (var i = 0; i < ilen; i++)
+	            for (var k = 0; k < klen; k++) {
+	                var i1 = i == ilen - 1 ? 0 : i + 1;
+	                var k1 = k == klen - 1 ? 0 : k + 1;
+	                var q1 = i / ilen * Math.PI * 2;
+	                var q2 = k / klen * Math.PI;
+	                var q3 = i1 / ilen * Math.PI * 2;
+	                var q4 = k1 / klen * Math.PI;
+	                var v1 = sphericalTo3d(q1, q2, rr[i + k * ilen]);
+	                var v2 = sphericalTo3d(q3, q2, rr[i1 + k * ilen]);
+	                var v3 = sphericalTo3d(q1, q4, rr[i + k1 * ilen]);
+	                var v4 = sphericalTo3d(q3, q4, rr[i1 + k1 * ilen]);
+	                var offset = (k * ilen + i) * 6 * 3;
+	                copy3array(vertices, offset, v3);
+	                copy3array(vertices, offset + 3, v2);
+	                copy3array(vertices, offset + 6, v1);
+	                copy3array(vertices, offset + 9, v2);
+	                copy3array(vertices, offset + 12, v3);
+	                copy3array(vertices, offset + 15, v4);
+	            }
+	    };
+	    Display3D.prototype.initMorphingSphere = function () {
+	        var _this = this;
+	        var ilen = 10, klen = 10, r = Display3D.scale / 4;
+	        var calm = true, morphing = false;
+	        var rr = [];
+	        var vertices = new Float32Array(ilen * klen * 6 * 3);
+	        for (var i = 0; i < ilen * klen; i++)
+	            rr[i] = r;
+	        this.generateSphere(vertices, ilen, klen, rr);
+	        var geometry = new THREE.BufferGeometry();
+	        geometry.addAttribute('position', new THREE.BufferAttribute(vertices, 3));
+	        geometry.computeVertexNormals();
+	        var material = new THREE.MeshPhongMaterial({ color: 0, shininess: 250 });
+	        this.morphingSphere = new THREE.Mesh(geometry, material);
+	        var morph = function () {
+	            morphing = true;
+	            _this.animator.play({
+	                func: function (dt) {
+	                    if (Math.random() > .7) {
+	                        for (var i = 0; i < ilen; i++)
+	                            for (var k = 0; k < klen; k++) {
+	                                var q = calm ? dt * dt : 1 - dt * dt;
+	                                if (i % 2 == 0 && k % 2 == 0)
+	                                    rr[i + k * ilen] = r + Math.random() * r * q * 2;
+	                                else
+	                                    rr[i + k * ilen] = r * (1 - q / 2);
+	                            }
+	                        _this.generateSphere(vertices, ilen, klen, rr);
+	                        geometry.attributes['position'].needsUpdate = true;
+	                        geometry.computeVertexNormals();
+	                    }
+	                },
+	                duration: 2500,
+	                object: _this.morphingSphere
+	            }).then(function () { morphing = false; calm = !calm; });
+	        };
+	        this.animator.play({
+	            func: function (dt) {
+	                if (dt == 1 && Math.random() > .8 && !morphing)
+	                    morph();
+	            },
+	            duration: 500,
+	            loop: true
+	        });
+	    };
+	    Display3D.prototype.addMorphingSphere = function (x, y) {
+	        var s = this.morphingSphere.clone();
+	        s.position.x = x * Display3D.scale;
+	        s.position.z = y * Display3D.scale;
+	        this.scene.add(s);
+	        this.animator.play({
+	            func: function (dt) {
+	                s.rotation.x = dt * Math.PI;
+	                s.rotation.z = dt * Math.PI * 2;
+	            },
+	            duration: 20000,
+	            loop: true
+	        });
+	        return s;
+	    };
 	    Display3D.prototype.render = function () {
 	        this.animator.step();
 	        if (this.glitch)
@@ -14334,7 +14399,16 @@
 	})();
 	exports.default = Display3D;
 	function sphericalTo3d(a, b, r) {
-	    return new THREE.Vector3(r * Math.cos(a) * Math.sin(b), r * Math.sin(a) * Math.sin(b), r * Math.cos(b));
+	    return [
+	        r * Math.cos(a) * Math.sin(b),
+	        r * Math.sin(a) * Math.sin(b),
+	        r * Math.cos(b)
+	    ];
+	}
+	function copy3array(a, offset, b) {
+	    a[offset] = b[0];
+	    a[offset + 1] = b[1];
+	    a[offset + 2] = b[2];
 	}
 	//# sourceMappingURL=display.js.map
 
@@ -50169,11 +50243,20 @@
 	    Controls.prototype.listenMobileEvents = function () {
 	        var _this = this;
 	        window.addEventListener("deviceorientation", function (e) {
-	            _this.turn = e.beta / 45;
-	            if (e.gamma < 0 && e.gamma >= -60)
-	                _this.up = (e.gamma + 60) / 60;
-	            else
-	                _this.up = 0;
+	            if (window.innerHeight > window.innerWidth) {
+	                _this.turn = e.gamma / 45;
+	                if (e.beta < 60)
+	                    _this.up = (60 - e.beta) / 60;
+	                else
+	                    _this.up = 0;
+	            }
+	            else {
+	                _this.turn = e.beta / 45;
+	                if (e.gamma < 0 && e.gamma >= -60)
+	                    _this.up = (e.gamma + 60) / 60;
+	                else
+	                    _this.up = 0;
+	            }
 	        }, true);
 	    };
 	    Controls.prototype.isMobile = function () {
