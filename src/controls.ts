@@ -27,7 +27,7 @@ export default class Controls{
     window.addEventListener("deviceorientation", (e) => {
       if(window.innerHeight > window.innerWidth){
         this.turn = e.gamma/45;        
-        if (e.beta<60) this.up = (60-e.beta)/60;
+        if (e.beta<75) this.up =  Math.max((75-e.beta)/60,1);
         else this.up = 0;
       }else{
         this.turn = e.beta/45;

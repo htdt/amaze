@@ -151,7 +151,8 @@
 	    World.prototype.destroyOnHit = function (p, d) {
 	        var _this = this;
 	        this.phys.onHit({
-	            obj: p,
+	            obj1: p,
+	            obj2: this.phys.player,
 	            once: true,
 	            func: function () {
 	                var pos = d.position.clone();
@@ -199,7 +200,8 @@
 	        this.world.addContactMaterial(new p2.ContactMaterial(playerMaterial, this.galaxyMaterial, { restitution: 1, stiffness: 32 }));
 	        this.world.on("impact", function (evt) {
 	            for (var i = 0, len = _this.interact.length; i < len; i++)
-	                if (evt.bodyA.id == _this.interact[i].obj.id || evt.bodyB.id == _this.interact[i].obj.id) {
+	                if ((evt.bodyA.id == _this.interact[i].obj1.id && evt.bodyB.id == _this.interact[i].obj2.id) ||
+	                    (evt.bodyA.id == _this.interact[i].obj2.id && evt.bodyB.id == _this.interact[i].obj1.id)) {
 	                    _this.interact[i].func();
 	                    if (_this.interact[i].once)
 	                        _this.interact.splice(i, 1);
@@ -216,8 +218,8 @@
 	        return wall;
 	    };
 	    Physics.prototype.onHit = function (_a) {
-	        var obj = _a.obj, func = _a.func, _b = _a.once, once = _b === void 0 ? false : _b;
-	        return this.interact.push({ obj: obj, func: func, once: once }) - 1;
+	        var obj1 = _a.obj1, obj2 = _a.obj2, func = _a.func, _b = _a.once, once = _b === void 0 ? false : _b;
+	        return this.interact.push({ obj1: obj1, obj2: obj2, func: func, once: once }) - 1;
 	    };
 	    Physics.prototype.createGalaxy = function (pos) {
 	        var shape = new p2.Circle({ radius: 1 });
@@ -14105,12 +14107,12 @@
 	        this.animation = [];
 	    }
 	    Animator.prototype.play = function (_a) {
-	        var _b = _a.func, func = _b === void 0 ? function (dt) { return null; } : _b, _c = _a.duration, duration = _c === void 0 ? 1000 : _c, _d = _a.object, object = _d === void 0 ? null : _d, _e = _a.loop, loop = _e === void 0 ? false : _e;
+	        var _b = _a.func, func = _b === void 0 ? function (dt) { return null; } : _b, _c = _a.duration, duration = _c === void 0 ? 1000 : _c, _d = _a.object, object = _d === void 0 ? null : _d, _e = _a.loop, loop = _e === void 0 ? false : _e, _f = _a.timer, timer = _f === void 0 ? false : _f;
 	        var animation = this.animation;
 	        return new Promise(function (resolve, reject) {
 	            if (object && animation.filter(function (o) { return o.object == object; }).length)
 	                return reject("object already in use");
-	            animation.push({ start: Date.now(), func: func, duration: duration, resolve: resolve, object: object, loop: loop });
+	            animation.push({ start: Date.now(), func: func, duration: duration, resolve: resolve, object: object, loop: loop, timer: timer });
 	        }).catch(function (error) { return console.log("catch: ", error); });
 	    };
 	    Animator.prototype.stop = function (object) {
@@ -14121,10 +14123,15 @@
 	    Animator.prototype.step = function () {
 	        for (var i = 0, len = this.animation.length; i < len; i++) {
 	            var dt = Date.now() - this.animation[i].start;
-	            if (dt <= this.animation[i].duration)
-	                this.animation[i].func(dt / this.animation[i].duration);
-	            else if (this.animation[i].loop)
+	            if (dt <= this.animation[i].duration) {
+	                if (!this.animation[i].timer)
+	                    this.animation[i].func(dt / this.animation[i].duration);
+	            }
+	            else if (this.animation[i].loop) {
+	                if (this.animation[i].timer)
+	                    this.animation[i].func(1);
 	                this.animation[i].start = Date.now();
+	            }
 	            else {
 	                this.animation[i].func(1);
 	                this.animation[i].resolve();
@@ -14237,8 +14244,8 @@
 	        this.glitch = true;
 	        return this.animator.play({
 	            duration: dt,
-	            func: function (dt) { if (dt == 1)
-	                _this.glitch = false; }
+	            func: function (dt) { _this.glitch = false; },
+	            timer: true
 	        });
 	    };
 	    Display3D.prototype.createGalaxy = function (pos) {
@@ -14281,29 +14288,48 @@
 	        };
 	    };
 	    Display3D.prototype.addDiffusedDust = function (w, h) {
-	        var particlesGeometry = new THREE.Geometry();
-	        for (var i = 0; i < 3000; i++) {
-	            var x = Math.random() * (w + 6) * Display3D.scale - Display3D.scale * 3;
-	            var z = Math.random() * (h + 6) * Display3D.scale - Display3D.scale * 3;
-	            var y = Math.random() * 3 * Display3D.scale;
-	            particlesGeometry.vertices.push(new THREE.Vector3(x, y, z));
-	        }
+	        var _this = this;
+	        var dustGeometry = new THREE.Geometry();
+	        for (var i = 0; i < 256; i++)
+	            dustGeometry.vertices.push(new THREE.Vector3(Math.random() * (w + 6) * Display3D.scale - Display3D.scale * 3, Math.random() * 6 * Display3D.scale - Display3D.scale * 3, Math.random() * (h + 6) * Display3D.scale - Display3D.scale * 3));
 	        var material = new THREE.PointCloudMaterial({ size: 1, color: 0x666666 });
-	        var particles1 = new THREE.PointCloud(particlesGeometry, material);
-	        var particles2 = new THREE.PointCloud(particlesGeometry, material);
-	        var particles3 = new THREE.PointCloud(particlesGeometry, material);
-	        this.scene.add(particles1);
-	        this.scene.add(particles2);
-	        this.scene.add(particles3);
+	        var moreDust = function () {
+	            var p = [];
+	            for (var i1 = 0; i1 < 5; i1++)
+	                p[i1] = (Math.random() - .5) * Display3D.scale * 6;
+	            var body = new THREE.PointCloud(dustGeometry, material);
+	            var v1 = new THREE.Vector3(p[0], Display3D.scale * 6, p[1]);
+	            var v2 = new THREE.Vector3(p[2], p[3], p[4]);
+	            body.position.copy(v1);
+	            _this.scene.add(body);
+	            var changeSpeed = 5000 + 30000 * Math.random();
+	            _this.animator.play({
+	                func: function (dt) {
+	                    var v = new THREE.Vector3();
+	                    var dtEasing = -2 * dt * dt * (2 * dt - 3) / 2;
+	                    v.subVectors(v2, v1).multiplyScalar(dtEasing).add(v1);
+	                    body.position.copy(v);
+	                },
+	                duration: changeSpeed,
+	                loop: true
+	            });
+	            _this.animator.play({
+	                func: function (_) {
+	                    v1.copy(v2);
+	                    v2.set((Math.random() - .5) * Display3D.scale * 6, (Math.random() - .5) * Display3D.scale * 6, (Math.random() - .5) * Display3D.scale * 6);
+	                },
+	                duration: changeSpeed,
+	                loop: true,
+	                timer: true
+	            });
+	        };
+	        moreDust();
 	        this.animator.play({
-	            func: function (dt) {
-	                var q = dt * Math.PI * 2;
-	                particles1.position.set(Math.cos(q) * Display3D.scale * 3, 0, Math.sin(q) * Display3D.scale * 3);
-	                particles2.position.set(Math.cos(q) * Display3D.scale * 3, Math.sin(q) * Display3D.scale * 3, 0);
-	                particles3.position.set(0, Math.cos(q) * Display3D.scale * 3, Math.sin(q) * Display3D.scale * 3);
-	            },
-	            duration: 50000,
-	            loop: true });
+	            func: function (_) { return moreDust(); },
+	            duration: 5000,
+	            loop: true,
+	            timer: true
+	        });
 	    };
 	    Display3D.prototype.generateSphere = function (vertices, ilen, klen, rr) {
 	        for (var i = 0; i < ilen; i++)
@@ -14365,11 +14391,12 @@
 	        };
 	        this.animator.play({
 	            func: function (dt) {
-	                if (dt == 1 && Math.random() > .8 && !morphing)
+	                if (Math.random() > .8 && !morphing)
 	                    morph();
 	            },
 	            duration: 500,
-	            loop: true
+	            loop: true,
+	            timer: true
 	        });
 	    };
 	    Display3D.prototype.addMorphingSphere = function (x, y) {
@@ -50245,8 +50272,8 @@
 	        window.addEventListener("deviceorientation", function (e) {
 	            if (window.innerHeight > window.innerWidth) {
 	                _this.turn = e.gamma / 45;
-	                if (e.beta < 60)
-	                    _this.up = (60 - e.beta) / 60;
+	                if (e.beta < 75)
+	                    _this.up = Math.max((75 - e.beta) / 60, 1);
 	                else
 	                    _this.up = 0;
 	            }

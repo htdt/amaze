@@ -2,7 +2,8 @@ import * as p2 from "p2";
 
 
 interface InteractObject {
-  obj: p2.Body;
+  obj1: p2.Body;
+  obj2: p2.Body;
   func: Function;
   once: boolean;
 }
@@ -46,8 +47,8 @@ export default class Physics{
 
     this.world.on("impact", (evt) => {
       for (let i=0, len=this.interact.length;i<len;i++)
-      if (evt.bodyA.id == this.interact[i].obj.id || evt.bodyB.id == this.interact[i].obj.id)
-      {
+      if ((evt.bodyA.id == this.interact[i].obj1.id && evt.bodyB.id == this.interact[i].obj2.id) ||
+        (evt.bodyA.id == this.interact[i].obj2.id && evt.bodyB.id == this.interact[i].obj1.id)){
         this.interact[i].func();
         if (this.interact[i].once) this.interact.splice(i,1);
         break;
@@ -65,8 +66,8 @@ export default class Physics{
       return wall;
   }
 
-  onHit({obj, func, once=false}){
-    return this.interact.push({obj, func, once}) - 1;
+  onHit({obj1, obj2, func, once=false}){
+    return this.interact.push({obj1, obj2, func, once}) - 1;
   }
 
   createGalaxy(pos: number[]){

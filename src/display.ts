@@ -18,6 +18,7 @@ interface AnimationObject{
   resolve: Function;
   object: any;
   loop: boolean;
+  timer: boolean;
 }
 
 interface galaxyView{
@@ -33,12 +34,12 @@ class Animator{
     this.animation = [];
   }
   
-  play({func=(dt)=>null, duration=1000, object=null, loop=false}): Promise<any>{
+  play({func=(dt)=>null, duration=1000, object=null, loop=false, timer=false}): Promise<any>{
     var animation = this.animation;
     return new Promise(function(resolve, reject){
       if (object && animation.filter(o=>o.object==object).length)
         return reject("object already in use");
-      animation.push({start: Date.now(), func, duration, resolve, object, loop});
+      animation.push({start: Date.now(), func, duration, resolve, object, loop, timer});
       //if (loop) reject("endless animation");
     }).catch(error => console.log("catch: ", error));
   }
@@ -51,9 +52,17 @@ class Animator{
   step(): void{
     for (let i=0, len = this.animation.length;i<len;i++){
       let dt = Date.now() - this.animation[i].start;
-      if (dt<=this.animation[i].duration)
-        this.animation[i].func(dt/this.animation[i].duration);
-      else if (this.animation[i].loop) this.animation[i].start = Date.now();//+ dt % this.animation[i].duration
+
+      if (dt<=this.animation[i].duration){
+        if (!this.animation[i].timer)
+          this.animation[i].func(dt/this.animation[i].duration);
+      }
+      else if (this.animation[i].loop) {
+        if (this.animation[i].timer)
+           this.animation[i].func(1);
+
+        this.animation[i].start = Date.now();//+ dt % this.animation[i].duration
+      }
       else {
         this.animation[i].func(1);
         this.animation[i].resolve();
@@ -223,7 +232,8 @@ export default class Display3D{
     this.glitch = true;
     return this.animator.play({
       duration: dt,
-      func: dt => {if (dt==1) this.glitch = false;}
+      func: dt => {this.glitch = false},
+      timer: true
     });
   }
 
@@ -275,37 +285,85 @@ export default class Display3D{
     }
   }
 
-
   addDiffusedDust(w,h): void{
-    let particlesGeometry = new THREE.Geometry();
+    let dustGeometry = new THREE.Geometry();
 
-    for (let i=0;i<3000;i++){
-      let x = Math.random() * (w+6) * Display3D.scale - Display3D.scale*3;
-      let z = Math.random() * (h+6) * Display3D.scale - Display3D.scale*3;
-      let y = Math.random() * 3 * Display3D.scale;
-      particlesGeometry.vertices.push(new THREE.Vector3(x,y,z));
-    }
+    for (let i=0;i<256;i++)
+      dustGeometry.vertices.push(new THREE.Vector3(
+        Math.random() * (w+6) * Display3D.scale - Display3D.scale*3,
+        Math.random() * 6 * Display3D.scale - Display3D.scale*3,
+        Math.random() * (h+6) * Display3D.scale - Display3D.scale*3
+      ));
 
     let material = new THREE.PointCloudMaterial({size: 1, color:0x666666});
 
-    let particles1 = new THREE.PointCloud(particlesGeometry,material);
-    let particles2 = new THREE.PointCloud(particlesGeometry,material);
-    let particles3 = new THREE.PointCloud(particlesGeometry,material);
-    
-    this.scene.add(particles1);
-    this.scene.add(particles2);
-    this.scene.add(particles3);
+    var moreDust = () => {
+      let p=[];
+      for (let i1=0;i1<5;i1++)
+        p[i1] = (Math.random()-.5)*Display3D.scale*6;
 
+      let body = new THREE.PointCloud(dustGeometry,material);
+      let v1 = new THREE.Vector3(p[0],Display3D.scale*6,p[1]);
+      let v2 = new THREE.Vector3(p[2],p[3],p[4]);
+      body.position.copy(v1);
+      this.scene.add(body);
+
+      let changeSpeed = 5000 + 30000 * Math.random();
+
+      this.animator.play({
+        func: dt => {
+          let v = new THREE.Vector3();
+          let dtEasing = -2*dt*dt*(2*dt-3)/2;
+          v.subVectors(v2,v1).multiplyScalar(dtEasing).add(v1);
+          body.position.copy(v);
+        },
+        duration: changeSpeed,
+        loop: true
+      });
+
+      this.animator.play({
+        func: _=> {
+         v1.copy(v2);
+         v2.set(
+            (Math.random()-.5)*Display3D.scale*6,
+            (Math.random()-.5)*Display3D.scale*6,
+            (Math.random()-.5)*Display3D.scale*6
+          );
+        },
+        duration: changeSpeed,
+        loop: true,
+        timer: true
+      });
+    }
+
+    moreDust();
+    
     this.animator.play({
+      func: _=> moreDust(),
+      duration: 5000,
+      loop: true,
+      timer: true
+    });
+
+    /*this.animator.play({
       func: dt => {
         let q = dt*Math.PI*2;
         particles1.position.set(Math.cos(q)*Display3D.scale*3, 0, Math.sin(q)*Display3D.scale*3);
         particles2.position.set(Math.cos(q)*Display3D.scale*3, Math.sin(q)*Display3D.scale*3, 0);
         particles3.position.set(0, Math.cos(q)*Display3D.scale*3, Math.sin(q)*Display3D.scale*3);
-        //material.color.setHSL(0, 0, Math.random());
       },
       duration: 50000,
-      loop: true});
+      loop: true});*/
+
+    /*this.animator.play({
+      func: _=> {
+        for (let i=0;i<10000;i++) this.addDustParticle(w,h);
+        this.dustGeometry.verticesNeedUpdate=true;
+      },
+      timer: true,
+      duration: 1000
+    });*/
+
   }
 
   generateSphere(vertices, ilen, klen, rr){
@@ -375,10 +433,11 @@ export default class Display3D{
 
     this.animator.play({
       func: (dt) => {
-        if (dt==1 && Math.random()>.8 && !morphing) morph();
+        if (Math.random()>.8 && !morphing) morph();
       },
       duration: 500,
-      loop: true
+      loop: true,
+      timer: true
     });
   }
 

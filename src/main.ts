@@ -180,7 +180,8 @@ class World{
 
   destroyOnHit(p:p2.Body, d:THREE.Mesh): void{
     this.phys.onHit({
-      obj: p,
+      obj1: p,
+      obj2: this.phys.player,
       once: true,
       func: () => {
         let pos = d.position.clone();
