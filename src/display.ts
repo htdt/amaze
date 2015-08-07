@@ -41,7 +41,7 @@ class Animator{
         return reject("object already in use");
       animation.push({start: Date.now(), func, duration, resolve, object, loop, timer});
       //if (loop) reject("endless animation");
-    }).catch(error => console.log("catch: ", error));
+    }).catch(error => null);
   }
 
   stop(object:any){
@@ -116,6 +116,9 @@ export default class Display3D{
     //this.renderer.shadowMapType = THREE.PCFShadowMap;
     document.body.appendChild(this.renderer.domElement);
 
+    this.renderer.domElement.addEventListener("click",
+      () => fullscreen(this.renderer.domElement), false);
+
     this.animator = new Animator();
 
     this.glitch = false;
@@ -149,7 +152,7 @@ export default class Display3D{
 
   initPlayer(): void{
     this.playerMaterial = new THREE.MeshPhongMaterial({color: 0, wireframe:true});
-    this.player = new THREE.Mesh(new THREE.OctahedronGeometry(Display3D.scale/3, 0), this.playerMaterial);
+    this.player = new THREE.Mesh(new THREE.OctahedronGeometry(Display3D.scale/4, 0), this.playerMaterial);
 
     //this.player.castShadow = true;
     this.player.position.y = 0;
@@ -344,26 +347,6 @@ export default class Display3D{
       loop: true,
       timer: true
     });
-
-    /*this.animator.play({
-      func: dt => {
-        let q = dt*Math.PI*2;
-        particles1.position.set(Math.cos(q)*Display3D.scale*3, 0, Math.sin(q)*Display3D.scale*3);
-        particles2.position.set(Math.cos(q)*Display3D.scale*3, Math.sin(q)*Display3D.scale*3, 0);
-        particles3.position.set(0, Math.cos(q)*Display3D.scale*3, Math.sin(q)*Display3D.scale*3);
-      },
-      duration: 50000,
-      loop: true});*/
-
-    /*this.animator.play({
-      func: _=> {
-        for (let i=0;i<10000;i++) this.addDustParticle(w,h);
-        this.dustGeometry.verticesNeedUpdate=true;
-      },
-      timer: true,
-      duration: 1000
-    });*/
-
   }
 
   generateSphere(vertices, ilen, klen, rr){
@@ -480,3 +463,14 @@ function copy3array(a,offset,b){
   a[offset+2] = b[2];
 }
 
+function fullscreen(el){
+  if (el.requestFullscreen) {
+    el.requestFullscreen();
+  } else if (el.msRequestFullscreen) {
+    el.msRequestFullscreen();
+  } else if (el.mozRequestFullScreen) {
+    el.mozRequestFullScreen();
+  } else if (el.webkitRequestFullscreen) {
+    el.webkitRequestFullscreen();
+  }
+}

@@ -21,7 +21,7 @@ export default class Physics{
     this.world = new p2.World({gravity:[0,0]});
     this.interact = [];
 
-    var playerShape = new p2.Circle({radius:.33});
+    var playerShape = new p2.Circle({radius:.25});
     this.player = new p2.Body({mass:1, position:[0,0]});
     this.player.addShape(playerShape);
     this.player.damping = .7;

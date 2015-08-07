@@ -186,7 +186,7 @@
 	        var _this = this;
 	        this.world = new p2.World({ gravity: [0, 0] });
 	        this.interact = [];
-	        var playerShape = new p2.Circle({ radius: .33 });
+	        var playerShape = new p2.Circle({ radius: .25 });
 	        this.player = new p2.Body({ mass: 1, position: [0, 0] });
 	        this.player.addShape(playerShape);
 	        this.player.damping = .7;
@@ -14113,7 +14113,7 @@
 	            if (object && animation.filter(function (o) { return o.object == object; }).length)
 	                return reject("object already in use");
 	            animation.push({ start: Date.now(), func: func, duration: duration, resolve: resolve, object: object, loop: loop, timer: timer });
-	        }).catch(function (error) { return console.log("catch: ", error); });
+	        }).catch(function (error) { return null; });
 	    };
 	    Animator.prototype.stop = function (object) {
 	        var i = this.animation.map(function (o) { return o.object; }).indexOf(object);
@@ -14169,6 +14169,7 @@
 	        this.renderer.setClearColor(0xffffff);
 	        this.scene.fog = new THREE.FogExp2(0xffffff, 0.004);
 	        document.body.appendChild(this.renderer.domElement);
+	        this.renderer.domElement.addEventListener("click", function () { return fullscreen(_this.renderer.domElement); }, false);
 	        this.animator = new Animator();
 	        this.glitch = false;
 	        this.initPlayer();
@@ -14186,7 +14187,7 @@
 	    Display3D.prototype.initPlayer = function () {
 	        var _this = this;
 	        this.playerMaterial = new THREE.MeshPhongMaterial({ color: 0, wireframe: true });
-	        this.player = new THREE.Mesh(new THREE.OctahedronGeometry(Display3D.scale / 3, 0), this.playerMaterial);
+	        this.player = new THREE.Mesh(new THREE.OctahedronGeometry(Display3D.scale / 4, 0), this.playerMaterial);
 	        this.player.position.y = 0;
 	        this.scene.add(this.player);
 	        this.animator.play({
@@ -14436,6 +14437,20 @@
 	    a[offset] = b[0];
 	    a[offset + 1] = b[1];
 	    a[offset + 2] = b[2];
+	}
+	function fullscreen(el) {
+	    if (el.requestFullscreen) {
+	        el.requestFullscreen();
+	    }
+	    else if (el.msRequestFullscreen) {
+	        el.msRequestFullscreen();
+	    }
+	    else if (el.mozRequestFullScreen) {
+	        el.mozRequestFullScreen();
+	    }
+	    else if (el.webkitRequestFullscreen) {
+	        el.webkitRequestFullscreen();
+	    }
 	}
 	//# sourceMappingURL=display.js.map
 
@@ -50273,16 +50288,25 @@
 	            if (window.innerHeight > window.innerWidth) {
 	                _this.turn = e.gamma / 45;
 	                if (e.beta < 75)
-	                    _this.up = Math.max((75 - e.beta) / 60, 1);
+	                    _this.up = Math.min((75 - e.beta) / 60, 1);
 	                else
 	                    _this.up = 0;
 	            }
 	            else {
-	                _this.turn = e.beta / 45;
-	                if (e.gamma < 0 && e.gamma >= -60)
-	                    _this.up = (e.gamma + 60) / 60;
-	                else
-	                    _this.up = 0;
+	                if (e.gamma < 0) {
+	                    _this.turn = e.beta / 45;
+	                    if (e.gamma >= -60)
+	                        _this.up = Math.min((e.gamma + 60) / 40, 1);
+	                    else
+	                        _this.up = 0;
+	                }
+	                else {
+	                    _this.turn = -e.beta / 45;
+	                    if (e.gamma <= 60)
+	                        _this.up = Math.min((60 - e.gamma) / 40, 1);
+	                    else
+	                        _this.up = 0;
+	                }
 	            }
 	        }, true);
 	    };
