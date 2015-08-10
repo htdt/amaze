@@ -106,7 +106,7 @@ export default class Display3D{
 
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(75, w/h, 1, 1000);
-    this.camera.position.y = Display3D.scale;
+    this.camera.position.y = Display3D.scale*3/2;
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setPixelRatio( window.devicePixelRatio );
     this.renderer.setSize( w, h );
@@ -291,7 +291,8 @@ export default class Display3D{
   addDiffusedDust(w,h): void{
     let dustGeometry = new THREE.Geometry();
 
-    for (let i=0;i<256;i++)
+    //console.log(w,h);
+    for (let i=0;i<w*h;i++)
       dustGeometry.vertices.push(new THREE.Vector3(
         Math.random() * (w+6) * Display3D.scale - Display3D.scale*3,
         Math.random() * 6 * Display3D.scale - Display3D.scale*3,

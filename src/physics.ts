@@ -39,11 +39,11 @@ export default class Physics{
 
     this.world.addContactMaterial(new p2.ContactMaterial(
       this.wallMaterial, this.galaxyMaterial,
-      {restitution : 1, stiffness : 32}));
+      {restitution : 1, stiffness : 100}));
 
     this.world.addContactMaterial(new p2.ContactMaterial(
       playerMaterial, this.galaxyMaterial,
-      {restitution : 1, stiffness : 32}));
+      {restitution : 1, stiffness : 16}));
 
     this.world.on("impact", (evt) => {
       for (let i=0, len=this.interact.length;i<len;i++)

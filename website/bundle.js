@@ -53,6 +53,7 @@
 	var physics_1 = __webpack_require__(1);
 	var display_1 = __webpack_require__(63);
 	var controls_1 = __webpack_require__(72);
+	var ellermaze_1 = __webpack_require__(73);
 	var WorldObject = (function () {
 	    function WorldObject(view, body) {
 	        this.view = view;
@@ -80,11 +81,14 @@
 	    function World() {
 	        this.phys = new physics_1.default();
 	        this.display = new display_1.default();
-	        this.me = new Player(this.display.player, this.phys.player, [2, 2]);
+	        this.maze = ellermaze_1.default(16, 16);
+	        var ppos = this.getRandomPosition();
+	        this.me = new Player(this.display.player, this.phys.player, [ppos.x, ppos.y]);
 	        this.worldObjects = [this.me];
-	        this.generateMaze();
+	        this.hitCounter = 0;
 	        this.buildWallsAndFloor();
-	        this.addTarget(this.getRandomPosition());
+	        for (var i = 0; i < 7; i++)
+	            this.addTarget(this.getRandomPosition());
 	        this.mainLoop();
 	    }
 	    World.prototype.mainLoop = function (ts) {
@@ -99,44 +103,19 @@
 	        this.prevLoopTS = ts;
 	        requestAnimationFrame(function (ts) { return _this.mainLoop(ts); });
 	    };
-	    World.prototype.generateMaze = function () {
-	        this.maze =
-	            ["############################",
-	                "#      #    #             ##",
-	                "#                          #",
-	                "#          #####           #",
-	                "##         #   #    ##     #",
-	                "###    *      ##     #     #",
-	                "#           ###      #     #",
-	                "#   ####                   #",
-	                "#   ##        ######       #",
-	                "#    #   ######     ###### #",
-	                "#    #                     #",
-	                "#      #    #             ##",
-	                "#                          #",
-	                "#          #####           #",
-	                "##         #   #    ##     #",
-	                "###           ##     #     #",
-	                "#           ###      #     #",
-	                "#   ####                   #",
-	                "#   ##        ######       #",
-	                "#    #   ######     ###### #",
-	                "#    #                     #",
-	                "############################"];
-	    };
 	    World.prototype.getRandomPosition = function () {
 	        var w = this.maze[0].length, h = this.maze.length, x, y;
 	        do {
 	            x = Math.floor(Math.random() * w);
 	            y = Math.floor(Math.random() * h);
-	        } while (this.maze[y][x] != " ");
+	        } while (this.maze[y][x]);
 	        return { x: x, y: y };
 	    };
 	    World.prototype.buildWallsAndFloor = function () {
 	        var w = this.maze[0].length, h = this.maze.length;
 	        for (var y = 0; y < h; y++)
 	            for (var x = 0; x < w; x++)
-	                if (this.maze[y][x] == "#") {
+	                if (this.maze[y][x]) {
 	                    this.phys.addWall(x, y);
 	                    this.display.addWall(x, y);
 	                }
@@ -162,13 +141,14 @@
 	                _this.phys.world.removeBody(p);
 	                _this.display.scene.remove(d);
 	                _this.display.animator.stop(d);
+	                console.log(++_this.hitCounter);
 	                _this.display.glitchMe(100).then(function () {
 	                    var _a = _this.display.createGalaxy(pos), animation = _a.animation, view = _a.view;
 	                    animation.then(function () {
 	                        var body = _this.phys.createGalaxy(physPos);
 	                        _this.worldObjects.push(new WorldObject(view, body));
 	                    });
-	                }).then(function () { return _this.addTarget(_this.getRandomPosition()); });
+	                });
 	            } });
 	    };
 	    return World;
@@ -196,8 +176,8 @@
 	        this.galaxyMaterial = new p2.Material();
 	        playerShape.material = playerMaterial;
 	        this.world.addContactMaterial(new p2.ContactMaterial(this.wallMaterial, playerMaterial, { restitution: .6, stiffness: Number.MAX_VALUE }));
-	        this.world.addContactMaterial(new p2.ContactMaterial(this.wallMaterial, this.galaxyMaterial, { restitution: 1, stiffness: 32 }));
-	        this.world.addContactMaterial(new p2.ContactMaterial(playerMaterial, this.galaxyMaterial, { restitution: 1, stiffness: 32 }));
+	        this.world.addContactMaterial(new p2.ContactMaterial(this.wallMaterial, this.galaxyMaterial, { restitution: 1, stiffness: 100 }));
+	        this.world.addContactMaterial(new p2.ContactMaterial(playerMaterial, this.galaxyMaterial, { restitution: 1, stiffness: 16 }));
 	        this.world.on("impact", function (evt) {
 	            for (var i = 0, len = _this.interact.length; i < len; i++)
 	                if ((evt.bodyA.id == _this.interact[i].obj1.id && evt.bodyB.id == _this.interact[i].obj2.id) ||
@@ -14162,7 +14142,7 @@
 	        }
 	        this.scene = new THREE.Scene();
 	        this.camera = new THREE.PerspectiveCamera(75, w / h, 1, 1000);
-	        this.camera.position.y = Display3D.scale;
+	        this.camera.position.y = Display3D.scale * 3 / 2;
 	        this.renderer = new THREE.WebGLRenderer({ antialias: true });
 	        this.renderer.setPixelRatio(window.devicePixelRatio);
 	        this.renderer.setSize(w, h);
@@ -14291,7 +14271,7 @@
 	    Display3D.prototype.addDiffusedDust = function (w, h) {
 	        var _this = this;
 	        var dustGeometry = new THREE.Geometry();
-	        for (var i = 0; i < 256; i++)
+	        for (var i = 0; i < w * h; i++)
 	            dustGeometry.vertices.push(new THREE.Vector3(Math.random() * (w + 6) * Display3D.scale - Display3D.scale * 3, Math.random() * 6 * Display3D.scale - Display3D.scale * 3, Math.random() * (h + 6) * Display3D.scale - Display3D.scale * 3));
 	        var material = new THREE.PointCloudMaterial({ size: 1, color: 0x666666 });
 	        var moreDust = function () {
@@ -50317,6 +50297,108 @@
 	})();
 	exports.default = Controls;
 	//# sourceMappingURL=controls.js.map
+
+/***/ },
+/* 73 */
+/***/ function(module, exports) {
+
+	//algorithm http://www.neocomputer.org/projects/eller.html
+	function EllerMaze(width, height) {
+	    if (width === void 0) { width = 16; }
+	    if (height === void 0) { height = 16; }
+	    var curstr = [];
+	    var map = [];
+	    var ls = width * 2 + 1;
+	    for (var i = 0; i < width; i++)
+	        curstr[i] = i;
+	    border();
+	    for (var n = 0; n < height; n++) {
+	        drawline(line1(), false);
+	        drawline(line2(), true);
+	        unnull();
+	    }
+	    drawline(last(), false);
+	    border();
+	    log();
+	    return map;
+	    function log() {
+	        for (var n_1 = 0; n_1 < map.length; n_1++)
+	            console.log(map[n_1].map(function (el) { return el ? "#" : "-"; }).join(""));
+	    }
+	    function line1() {
+	        var result = [], v1, v2;
+	        for (var i = 0; i < width - 1; i++) {
+	            result[i] = false;
+	            if (curstr[i] == curstr[i + 1])
+	                result[i] = true;
+	            else {
+	                if (Math.random() > .5)
+	                    result[i] = true;
+	                else {
+	                    v1 = curstr[i];
+	                    v2 = curstr[i + 1];
+	                    curstr = curstr.map(function (x) {
+	                        if (x == v2)
+	                            return v1;
+	                        else
+	                            return x;
+	                    });
+	                }
+	            }
+	        }
+	        return result;
+	    }
+	    function line2() {
+	        var result = [];
+	        for (var i = 0; i < width; i++) {
+	            result[i] = false;
+	            var l = curstr.filter(function (x) { return x == curstr[i]; }).length;
+	            if (l > 1 && Math.random() > .5) {
+	                result[i] = true;
+	                curstr[i] = null;
+	            }
+	        }
+	        return result;
+	    }
+	    function unique() {
+	        for (var i = 0;; i++)
+	            if (curstr.filter(function (x) { return x == i; }).length == 0)
+	                return i;
+	    }
+	    function unnull() {
+	        for (var i = 0; i < width; i++)
+	            if (curstr[i] == null)
+	                curstr[i] = unique();
+	    }
+	    function last() {
+	        var result = line1();
+	        for (var i = 0; i < width - 1; i++)
+	            if (curstr[i] != curstr[i + 1])
+	                result[i] = false;
+	        return result;
+	    }
+	    function drawline(l, isline2) {
+	        var outl = [];
+	        outl.push(true);
+	        for (var i = 0; i < width - 1; i++) {
+	            if (isline2)
+	                outl.push(l[i], Math.random() > .3);
+	            else
+	                outl.push(false, l[i]);
+	        }
+	        outl.push(l[width - 1]);
+	        outl.push(true);
+	        map.push(outl);
+	    }
+	    function border() {
+	        var l = [];
+	        for (var i = 0; i < ls; i++)
+	            l.push(true);
+	        map.push(l);
+	    }
+	}
+	exports.default = EllerMaze;
+	//# sourceMappingURL=ellermaze.js.map
 
 /***/ }
 /******/ ]);
