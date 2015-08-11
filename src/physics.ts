@@ -43,7 +43,7 @@ export default class Physics{
 
     this.world.addContactMaterial(new p2.ContactMaterial(
       playerMaterial, this.galaxyMaterial,
-      {restitution : 1, stiffness : 16}));
+      {restitution : 1, stiffness : 10}));
 
     this.world.on("impact", (evt) => {
       for (let i=0, len=this.interact.length;i<len;i++)
@@ -64,6 +64,15 @@ export default class Physics{
       this.world.addBody(wall);
 
       return wall;
+  }
+
+  addTarget(x,y){
+      let t = new p2.Body({mass:50, position:[x,y]});
+      let tShape = new p2.Circle({radius:.5});
+      tShape.material = this.wallMaterial;
+      t.addShape(tShape);
+      this.world.addBody(t);
+      return t;
   }
 
   onHit({obj1, obj2, func, once=false}){

@@ -3,6 +3,24 @@ import Display3D from "./display";
 import Controls from "./controls";
 import EllerMaze from "./ellermaze"
 
+
+function fullscreen(el){
+  if (el.requestFullscreen) {
+    el.requestFullscreen();
+  } else if (el.msRequestFullscreen) {
+    el.msRequestFullscreen();
+  } else if (el.mozRequestFullScreen) {
+    el.mozRequestFullScreen();
+  } else if (el.webkitRequestFullscreen) {
+    el.webkitRequestFullscreen();
+  }
+}
+
+function InitUI(){
+  var fsIcon = document.getElementById("fullscreen");
+  fsIcon.addEventListener("click", () => fullscreen(document.body), false);
+}
+
 class WorldObject{
   constructor(public view: THREE.Mesh, public body: p2.Body){}
   up(display: Display3D){display.moveObject(this.view, this.body);}
@@ -34,31 +52,53 @@ class World{
   prevLoopTS: number;
   worldObjects: WorldObject[];
   hitCounter: number;
+  performanceTimer: number[];
+  performanceStep: number;
+  msg: string[];
+  msgDisplay: HTMLElement;
 
   constructor(){
+    this.msg = ["Reality"," does not"," exist"," until"," it is"," measured."];
+    this.msgDisplay = document.getElementById("msg");
+
     this.phys = new Physics();
     this.display = new Display3D();
-    this.maze = EllerMaze(16,16);
+    this.maze = EllerMaze(10,10);
     
     let ppos = this.getRandomPosition();
     this.me = new Player(this.display.player, this.phys.player, [ppos.x, ppos.y]);
     this.worldObjects = [this.me];
     this.hitCounter = 0;
+
+    this.performanceTimer = [0,0];
+    this.performanceStep = 0;
     
-    this.buildWallsAndFloor();
-    for (let i=0;i<7;i++)
-      this.addTarget(this.getRandomPosition());
+    this.buildWallsAndFloor();    
+    this.addTarget(this.getRandomPosition());
     this.mainLoop();
+
+    setInterval(()=>{
+      console.log(this.performanceTimer.map(v=>(v/this.performanceStep)).join(" "));
+    },5000);
   }
   
   mainLoop(ts = null) {
+    let perfd = [];
     let dt = this.prevLoopTS ? ts - this.prevLoopTS : 1000/60;
 
+    perfd[0] = performance.now();
     this.phys.world.step(dt/1000);
+    perfd[1] = performance.now();
     this.me.move(dt);
     this.worldObjects.forEach(g=>g.up(this.display));
     this.display.moveCamera(this.me.angle);
+    perfd[2] = performance.now();
     this.display.render();
+    perfd[3] = performance.now();
+
+    this.performanceTimer[0] += perfd[1]-perfd[0];
+    this.performanceTimer[1] += perfd[3]-perfd[2];
+    this.performanceStep++;
 
     this.prevLoopTS = ts;
     requestAnimationFrame((ts) => this.mainLoop(ts));
@@ -87,8 +127,9 @@ class World{
   }
 
   addTarget({x,y}){
-      var p = this.phys.addWall(x,y);
+      var p = this.phys.addTarget(x,y);
       var o = this.display.addMorphingSphere(x,y);
+      this.worldObjects.push(new WorldObject(o, p));
       this.destroyOnHit(p, o);
   }
 
@@ -99,15 +140,15 @@ class World{
       once: true,
       func: () => {
         let pos = d.position.clone();
-        let physPos = [];
-        physPos[0] = p.position[0];
-        physPos[1] = p.position[1];
-        //.slice(0); //array clone
+        let physPos = [p.position[0], p.position[1]];
+        let i = this.worldObjects.map(o=>o.view.id).indexOf(d.id);
+        if (i>=0) this.worldObjects.splice(i,1);
+
         this.phys.world.removeBody(p);
         this.display.scene.remove(d);
         this.display.animator.stop(d);
 
-        console.log(++this.hitCounter);
+        this.msgDisplay.innerText += this.msg[this.hitCounter++];
 
         this.display.glitchMe(100).then(() => {
           let {animation, view } = this.display.createGalaxy(pos);
@@ -115,9 +156,10 @@ class World{
             let body = this.phys.createGalaxy(physPos);
             this.worldObjects.push(new WorldObject(view, body));
           });
-        });//.then(()=>this.addTarget(this.getRandomPosition()));
+        }).then(()=>this.addTarget(this.getRandomPosition()));
     }});
   }
 }
 
+InitUI();
 new World();

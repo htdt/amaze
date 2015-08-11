@@ -1,5 +1,7 @@
 import * as THREE from "three";
 
+import Controls from "./controls";
+
 import './glitch/CopyShader';
 import './glitch/DigitalGlitch';
 
@@ -111,18 +113,13 @@ export default class Display3D{
     this.renderer.setPixelRatio( window.devicePixelRatio );
     this.renderer.setSize( w, h );
     this.renderer.setClearColor(0xffffff);
-    this.scene.fog = new THREE.FogExp2(0xffffff,0.004);
+    this.scene.fog = new THREE.FogExp2(0xffffff,0.005);
     //this.renderer.shadowMapEnabled = true;
     //this.renderer.shadowMapType = THREE.PCFShadowMap;
     document.body.appendChild(this.renderer.domElement);
 
-    this.renderer.domElement.addEventListener("click",
-      () => fullscreen(this.renderer.domElement), false);
-
     this.animator = new Animator();
-
     this.glitch = false;
-
     this.initPlayer();
     this.initLight();
     this.initProtoGalaxy();
@@ -133,8 +130,8 @@ export default class Display3D{
   initLight(): void{
     this.scene.add(new THREE.AmbientLight(0xaaaaaa));
 
-    this.light = new THREE.PointLight(0xffffff, .5);
-    this.light.position.y = 50*Display3D.scale;
+    this.light = new THREE.PointLight(0xffffff, .1);
+    this.light.position.y = 5*Display3D.scale;
     this.scene.add(this.light);
 
     /*
@@ -170,8 +167,8 @@ export default class Display3D{
       new THREE.MeshLambertMaterial({color: 0xffffff, side: THREE.DoubleSide/*, wireframe:true*/})
     );
     plane.rotation.x = Math.PI/2;
-    plane.position.x = w*Display3D.scale/2;
-    plane.position.z = h*Display3D.scale/2;
+    plane.position.x = w*Display3D.scale/2 - Display3D.scale/2;
+    plane.position.z = h*Display3D.scale/2 - Display3D.scale/2;
     plane.position.y = -Display3D.scale/2;
     plane.receiveShadow = true;
     this.scene.add(plane);
@@ -462,16 +459,4 @@ function copy3array(a,offset,b){
   a[offset] = b[0];
   a[offset+1] = b[1];
   a[offset+2] = b[2];
-}
-
-function fullscreen(el){
-  if (el.requestFullscreen) {
-    el.requestFullscreen();
-  } else if (el.msRequestFullscreen) {
-    el.msRequestFullscreen();
-  } else if (el.mozRequestFullScreen) {
-    el.mozRequestFullScreen();
-  } else if (el.webkitRequestFullscreen) {
-    el.webkitRequestFullscreen();
-  }
 }

@@ -54,6 +54,24 @@
 	var display_1 = __webpack_require__(63);
 	var controls_1 = __webpack_require__(72);
 	var ellermaze_1 = __webpack_require__(73);
+	function fullscreen(el) {
+	    if (el.requestFullscreen) {
+	        el.requestFullscreen();
+	    }
+	    else if (el.msRequestFullscreen) {
+	        el.msRequestFullscreen();
+	    }
+	    else if (el.mozRequestFullScreen) {
+	        el.mozRequestFullScreen();
+	    }
+	    else if (el.webkitRequestFullscreen) {
+	        el.webkitRequestFullscreen();
+	    }
+	}
+	function InitUI() {
+	    var fsIcon = document.getElementById("fullscreen");
+	    fsIcon.addEventListener("click", function () { return fullscreen(document.body); }, false);
+	}
 	var WorldObject = (function () {
 	    function WorldObject(view, body) {
 	        this.view = view;
@@ -79,27 +97,42 @@
 	})(WorldObject);
 	var World = (function () {
 	    function World() {
+	        var _this = this;
+	        this.msg = ["Reality", " does not", " exist", " until", " it is", " measured."];
+	        this.msgDisplay = document.getElementById("msg");
 	        this.phys = new physics_1.default();
 	        this.display = new display_1.default();
-	        this.maze = ellermaze_1.default(16, 16);
+	        this.maze = ellermaze_1.default(10, 10);
 	        var ppos = this.getRandomPosition();
 	        this.me = new Player(this.display.player, this.phys.player, [ppos.x, ppos.y]);
 	        this.worldObjects = [this.me];
 	        this.hitCounter = 0;
+	        this.performanceTimer = [0, 0];
+	        this.performanceStep = 0;
 	        this.buildWallsAndFloor();
-	        for (var i = 0; i < 7; i++)
-	            this.addTarget(this.getRandomPosition());
+	        this.addTarget(this.getRandomPosition());
 	        this.mainLoop();
+	        setInterval(function () {
+	            console.log(_this.performanceTimer.map(function (v) { return (v / _this.performanceStep); }).join(" "));
+	        }, 5000);
 	    }
 	    World.prototype.mainLoop = function (ts) {
 	        var _this = this;
 	        if (ts === void 0) { ts = null; }
+	        var perfd = [];
 	        var dt = this.prevLoopTS ? ts - this.prevLoopTS : 1000 / 60;
+	        perfd[0] = performance.now();
 	        this.phys.world.step(dt / 1000);
+	        perfd[1] = performance.now();
 	        this.me.move(dt);
 	        this.worldObjects.forEach(function (g) { return g.up(_this.display); });
 	        this.display.moveCamera(this.me.angle);
+	        perfd[2] = performance.now();
 	        this.display.render();
+	        perfd[3] = performance.now();
+	        this.performanceTimer[0] += perfd[1] - perfd[0];
+	        this.performanceTimer[1] += perfd[3] - perfd[2];
+	        this.performanceStep++;
 	        this.prevLoopTS = ts;
 	        requestAnimationFrame(function (ts) { return _this.mainLoop(ts); });
 	    };
@@ -123,8 +156,9 @@
 	    };
 	    World.prototype.addTarget = function (_a) {
 	        var x = _a.x, y = _a.y;
-	        var p = this.phys.addWall(x, y);
+	        var p = this.phys.addTarget(x, y);
 	        var o = this.display.addMorphingSphere(x, y);
+	        this.worldObjects.push(new WorldObject(o, p));
 	        this.destroyOnHit(p, o);
 	    };
 	    World.prototype.destroyOnHit = function (p, d) {
@@ -135,24 +169,26 @@
 	            once: true,
 	            func: function () {
 	                var pos = d.position.clone();
-	                var physPos = [];
-	                physPos[0] = p.position[0];
-	                physPos[1] = p.position[1];
+	                var physPos = [p.position[0], p.position[1]];
+	                var i = _this.worldObjects.map(function (o) { return o.view.id; }).indexOf(d.id);
+	                if (i >= 0)
+	                    _this.worldObjects.splice(i, 1);
 	                _this.phys.world.removeBody(p);
 	                _this.display.scene.remove(d);
 	                _this.display.animator.stop(d);
-	                console.log(++_this.hitCounter);
+	                _this.msgDisplay.innerText += _this.msg[_this.hitCounter++];
 	                _this.display.glitchMe(100).then(function () {
 	                    var _a = _this.display.createGalaxy(pos), animation = _a.animation, view = _a.view;
 	                    animation.then(function () {
 	                        var body = _this.phys.createGalaxy(physPos);
 	                        _this.worldObjects.push(new WorldObject(view, body));
 	                    });
-	                });
+	                }).then(function () { return _this.addTarget(_this.getRandomPosition()); });
 	            } });
 	    };
 	    return World;
 	})();
+	InitUI();
 	new World();
 	//# sourceMappingURL=main.js.map
 
@@ -177,7 +213,7 @@
 	        playerShape.material = playerMaterial;
 	        this.world.addContactMaterial(new p2.ContactMaterial(this.wallMaterial, playerMaterial, { restitution: .6, stiffness: Number.MAX_VALUE }));
 	        this.world.addContactMaterial(new p2.ContactMaterial(this.wallMaterial, this.galaxyMaterial, { restitution: 1, stiffness: 100 }));
-	        this.world.addContactMaterial(new p2.ContactMaterial(playerMaterial, this.galaxyMaterial, { restitution: 1, stiffness: 16 }));
+	        this.world.addContactMaterial(new p2.ContactMaterial(playerMaterial, this.galaxyMaterial, { restitution: 1, stiffness: 10 }));
 	        this.world.on("impact", function (evt) {
 	            for (var i = 0, len = _this.interact.length; i < len; i++)
 	                if ((evt.bodyA.id == _this.interact[i].obj1.id && evt.bodyB.id == _this.interact[i].obj2.id) ||
@@ -196,6 +232,14 @@
 	        wall.addShape(wallShape);
 	        this.world.addBody(wall);
 	        return wall;
+	    };
+	    Physics.prototype.addTarget = function (x, y) {
+	        var t = new p2.Body({ mass: 50, position: [x, y] });
+	        var tShape = new p2.Circle({ radius: .5 });
+	        tShape.material = this.wallMaterial;
+	        t.addShape(tShape);
+	        this.world.addBody(t);
+	        return t;
 	    };
 	    Physics.prototype.onHit = function (_a) {
 	        var obj1 = _a.obj1, obj2 = _a.obj2, func = _a.func, _b = _a.once, once = _b === void 0 ? false : _b;
@@ -14147,9 +14191,8 @@
 	        this.renderer.setPixelRatio(window.devicePixelRatio);
 	        this.renderer.setSize(w, h);
 	        this.renderer.setClearColor(0xffffff);
-	        this.scene.fog = new THREE.FogExp2(0xffffff, 0.004);
+	        this.scene.fog = new THREE.FogExp2(0xffffff, 0.005);
 	        document.body.appendChild(this.renderer.domElement);
-	        this.renderer.domElement.addEventListener("click", function () { return fullscreen(_this.renderer.domElement); }, false);
 	        this.animator = new Animator();
 	        this.glitch = false;
 	        this.initPlayer();
@@ -14160,8 +14203,8 @@
 	    }
 	    Display3D.prototype.initLight = function () {
 	        this.scene.add(new THREE.AmbientLight(0xaaaaaa));
-	        this.light = new THREE.PointLight(0xffffff, .5);
-	        this.light.position.y = 50 * Display3D.scale;
+	        this.light = new THREE.PointLight(0xffffff, .1);
+	        this.light.position.y = 5 * Display3D.scale;
 	        this.scene.add(this.light);
 	    };
 	    Display3D.prototype.initPlayer = function () {
@@ -14178,8 +14221,8 @@
 	    Display3D.prototype.addEnvironment = function (w, h) {
 	        var plane = new THREE.Mesh(new THREE.PlaneBufferGeometry(w * Display3D.scale, h * Display3D.scale), new THREE.MeshLambertMaterial({ color: 0xffffff, side: THREE.DoubleSide }));
 	        plane.rotation.x = Math.PI / 2;
-	        plane.position.x = w * Display3D.scale / 2;
-	        plane.position.z = h * Display3D.scale / 2;
+	        plane.position.x = w * Display3D.scale / 2 - Display3D.scale / 2;
+	        plane.position.z = h * Display3D.scale / 2 - Display3D.scale / 2;
 	        plane.position.y = -Display3D.scale / 2;
 	        plane.receiveShadow = true;
 	        this.scene.add(plane);
@@ -14417,20 +14460,6 @@
 	    a[offset] = b[0];
 	    a[offset + 1] = b[1];
 	    a[offset + 2] = b[2];
-	}
-	function fullscreen(el) {
-	    if (el.requestFullscreen) {
-	        el.requestFullscreen();
-	    }
-	    else if (el.msRequestFullscreen) {
-	        el.msRequestFullscreen();
-	    }
-	    else if (el.mozRequestFullScreen) {
-	        el.mozRequestFullScreen();
-	    }
-	    else if (el.webkitRequestFullscreen) {
-	        el.webkitRequestFullscreen();
-	    }
 	}
 	//# sourceMappingURL=display.js.map
 
@@ -50240,7 +50269,7 @@
 	    function Controls() {
 	        this.turn = 0;
 	        this.up = 0;
-	        if (!this.isMobile())
+	        if (!Controls.isMobile())
 	            this.listenDesktopEvents();
 	        else
 	            this.listenMobileEvents();
@@ -50290,7 +50319,7 @@
 	            }
 	        }, true);
 	    };
-	    Controls.prototype.isMobile = function () {
+	    Controls.isMobile = function () {
 	        return typeof window.orientation !== 'undefined';
 	    };
 	    return Controls;

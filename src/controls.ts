@@ -6,7 +6,7 @@ export default class Controls{
     this.turn = 0;
     this.up = 0;
 
-    if (!this.isMobile()) this.listenDesktopEvents();
+    if (!Controls.isMobile()) this.listenDesktopEvents();
     else this.listenMobileEvents();
   }
 
@@ -43,7 +43,7 @@ export default class Controls{
     }, true);
   }
 
-  isMobile(): boolean {
+  static isMobile(): boolean {
     return typeof window.orientation !== 'undefined';
   }
 }
