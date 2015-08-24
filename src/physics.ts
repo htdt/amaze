@@ -9,7 +9,7 @@ interface InteractObject {
 }
 
 
-export default class Physics{
+export class Physics{
 
   world: p2.World;
   interact: InteractObject[];

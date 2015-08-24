@@ -5,7 +5,7 @@
   "main": "src/main.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "webpack-dev-server --progress --colors",
+    "start": "webpack-dev-server --no-info --hot --inline",
     "build": "webpack"
   },
   "author": "crush",
@@ -15,6 +15,6 @@
   },
   "dependencies": {
     "p2": "^0.7.0",
-    "three": "^0.71.0"
+    "whatwg-fetch": "^0.9.0"
   }
 }

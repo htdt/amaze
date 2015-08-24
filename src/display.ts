@@ -1,6 +1,7 @@
-import * as THREE from "three";
+//THREE imported globally in webpack.config.js:25
 
-import Controls from "./controls";
+import {Animator} from "./animator";
+import {HeadObject} from "./end";
 
 import './glitch/CopyShader';
 import './glitch/DigitalGlitch';
@@ -11,71 +12,13 @@ import './glitch/MaskPass';
 import './glitch/ShaderPass';
 import './glitch/GlitchPass';
 
-declare var PRODUCTION;
-
-interface AnimationObject{
-  start: number;
-  func: Function;
-  duration: number;
-  resolve: Function;
-  object: any;
-  loop: boolean;
-  timer: boolean;
-}
 
 interface galaxyView{
   animation: Promise<any>;
   view: THREE.Mesh;
 }
 
-
-class Animator{
-  animation: AnimationObject[];
-
-  constructor(){
-    this.animation = [];
-  }
-  
-  play({func=(dt)=>null, duration=1000, object=null, loop=false, timer=false}): Promise<any>{
-    var animation = this.animation;
-    return new Promise(function(resolve, reject){
-      if (object && animation.filter(o=>o.object==object).length)
-        return reject("object already in use");
-      animation.push({start: Date.now(), func, duration, resolve, object, loop, timer});
-      //if (loop) reject("endless animation");
-    }).catch(error => null);
-  }
-
-  stop(object:any){
-    let i = this.animation.map(o=>o.object).indexOf(object);
-    if (i>=0) this.animation.splice(i,1);
-  }
-
-  step(): void{
-    for (let i=0, len = this.animation.length;i<len;i++){
-      let dt = Date.now() - this.animation[i].start;
-
-      if (dt<=this.animation[i].duration){
-        if (!this.animation[i].timer)
-          this.animation[i].func(dt/this.animation[i].duration);
-      }
-      else if (this.animation[i].loop) {
-        if (this.animation[i].timer)
-           this.animation[i].func(1);
-
-        this.animation[i].start = Date.now();//+ dt % this.animation[i].duration
-      }
-      else {
-        this.animation[i].func(1);
-        this.animation[i].resolve();
-        this.animation.splice(i,1);
-        i--;len--;
-      }
-    }
-  }
-}  
-
-export default class Display3D{
+export class Display3D{
   static scale = 50;
 
   scene: THREE.Scene;
@@ -84,7 +27,6 @@ export default class Display3D{
   animator: Animator;
 
   light: THREE.Light;
-  //shadowLight: THREE.DirectionalLight;
   playerMaterial: THREE.MeshPhongMaterial;
   player: THREE.Mesh;
   protoGalaxy: THREE.Mesh;
@@ -94,18 +36,8 @@ export default class Display3D{
 
 
   constructor(){
-    let w,h;
-    if (typeof PRODUCTION == 'undefined') {w=800; h=300;}
-    else{
-      w = window.innerWidth;
-      h = window.innerHeight;
-      window.addEventListener('resize', () => {
-        this.camera.aspect = window.innerWidth / window.innerHeight;
-        this.camera.updateProjectionMatrix();
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
-      }, false);
-    }
-
+    let w = window.innerWidth;
+    let h = window.innerHeight;
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(75, w/h, 1, 1000);
     this.camera.position.y = Display3D.scale*3/2;
@@ -113,10 +45,13 @@ export default class Display3D{
     this.renderer.setPixelRatio( window.devicePixelRatio );
     this.renderer.setSize( w, h );
     this.renderer.setClearColor(0xffffff);
-    this.scene.fog = new THREE.FogExp2(0xffffff,0.005);
-    //this.renderer.shadowMapEnabled = true;
-    //this.renderer.shadowMapType = THREE.PCFShadowMap;
+    this.scene.fog = new THREE.FogExp2(0xffffff,0.004);
     document.body.appendChild(this.renderer.domElement);
+    window.addEventListener('resize', () => {
+      this.camera.aspect = window.innerWidth / window.innerHeight;
+      this.camera.updateProjectionMatrix();
+      this.renderer.setSize(window.innerWidth, window.innerHeight);
+    }, false);
 
     this.animator = new Animator();
     this.glitch = false;
@@ -125,33 +60,66 @@ export default class Display3D{
     this.initProtoGalaxy();
     this.initGlitch();
     this.initMorphingSphere();
+
+    /*var head = new HeadObject();
+    head.load().then(_=>{
+      head.mesh.position.set(100,50,100);
+      head.mesh.scale.set(50,50,50);
+      head.lowpoly(4);
+      head.colorize();
+      this.scene.add(head.mesh);
+
+      this.animator.play({
+        func: d=>head.mesh.rotation.y=Math.sin(d*Math.PI*2)/2,
+        duration: 30000, loop: true
+      });
+      
+      this.animator.play({
+        func: d=>{
+          head.lowpoly(d*d*d*d * 996 + 4);
+          
+        },
+        duration: 15000
+      }).then(_=>{
+        this.animator.play({
+          func: _=> {
+            if (Math.random()>.8){
+              head.lowpoly(Math.pow(Math.random(),2) * 996 + 4)
+              this.glitchMe(200);
+            }
+          },
+          duration: 1000, timer: true, loop: true});
+        
+        this.animator.play({
+          func: _=> {
+            if (Math.random()>.8){
+              if (head.mesh.material == head.materialWire)
+                head.mesh.material = head.materialSolid;
+              else head.mesh.material = head.materialWire;
+              this.glitchMe(100);
+            }
+          },
+          duration: 1000, timer: true, loop: true});
+      });
+
+    });*/
+
   }
 
   initLight(): void{
     this.scene.add(new THREE.AmbientLight(0xaaaaaa));
 
-    this.light = new THREE.PointLight(0xffffff, .1);
-    this.light.position.y = 5*Display3D.scale;
-    this.scene.add(this.light);
-
-    /*
-    this.shadowLight = new THREE.DirectionalLight(0,1);
-    this.shadowLight.position.set(0,50*Display3D.scale,0);
-    this.shadowLight.castShadow = true;
-    this.shadowLight.onlyShadow = true;
-    this.shadowLight.shadowDarkness = .25;
-    this.shadowLight.shadowMapWidth = 1024;
-    this.shadowLight.shadowMapHeight = 1024;
-    //this.shadowLight.shadowCascade = true;
-    this.shadowLight.target = this.player;
-    this.scene.add(this.shadowLight);*/
+    this.light = new THREE.PointLight(0xffffff, .3);
+    this.light.position.y = Display3D.scale;
+    this.light.position.x = Display3D.scale;
+    this.light.position.z = Display3D.scale*4;
+    //this.scene.add(this.light);
   }
 
   initPlayer(): void{
     this.playerMaterial = new THREE.MeshPhongMaterial({color: 0, wireframe:true});
-    this.player = new THREE.Mesh(new THREE.OctahedronGeometry(Display3D.scale/4, 0), this.playerMaterial);
+    this.player = new THREE.Mesh(new THREE.OctahedronGeometry(Display3D.scale/4, 1), this.playerMaterial);
 
-    //this.player.castShadow = true;
     this.player.position.y = 0;
     this.scene.add(this.player);
 
@@ -173,16 +141,14 @@ export default class Display3D{
     plane.receiveShadow = true;
     this.scene.add(plane);
 
-    this.light.position.x = w*Display3D.scale/2;
-    this.light.position.z = h*Display3D.scale/2;
-    //this.shadowLight.position.x = w*Display3D.scale/2;
-    //this.shadowLight.position.z = h*Display3D.scale/2;
+    //this.light.position.x = w*Display3D.scale/2;
+    //this.light.position.z = h*Display3D.scale/2;
 
     this.addDiffusedDust(w,h);
   }
 
   addWall(x:number, y:number): THREE.Mesh {
-    let wallMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff });
+    let wallMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff, shading: THREE.FlatShading });
     let curWall = new THREE.Mesh(
       new THREE.BoxGeometry(Display3D.scale, Display3D.scale, Display3D.scale),
       wallMaterial
@@ -202,8 +168,9 @@ export default class Display3D{
   moveCamera(q: number): void{
     this.camera.position.x = this.player.position.x - Math.cos(q)*Display3D.scale*2;
     this.camera.position.z = this.player.position.z - Math.sin(q)*Display3D.scale*2;
+    this.camera.position.y = Display3D.scale*2.5;
     this.camera.lookAt(new THREE.Vector3(
-      this.player.position.x, 0, this.player.position.z));
+      this.player.position.x, Display3D.scale, this.player.position.z));
   }
 
 
@@ -296,7 +263,7 @@ export default class Display3D{
         Math.random() * (h+6) * Display3D.scale - Display3D.scale*3
       ));
 
-    let material = new THREE.PointCloudMaterial({size: 1, color:0x666666});
+    let material = new THREE.PointCloudMaterial({size: 3, color:0x999999, fog: true});
 
     var moreDust = () => {
       let p=[];
@@ -341,7 +308,7 @@ export default class Display3D{
     
     this.animator.play({
       func: _=> moreDust(),
-      duration: 5000,
+      duration: 10000,
       loop: true,
       timer: true
     });
@@ -388,7 +355,10 @@ export default class Display3D{
     geometry.addAttribute( 'position', new THREE.BufferAttribute( vertices, 3 ) );
     geometry.computeVertexNormals();
 
-    var material = new THREE.MeshPhongMaterial( {color: 0, shininess: 250});
+    var material = new THREE.MeshPhongMaterial( {
+      specular: 0xffffff,
+      color: 0,
+      shininess: 25});
     this.morphingSphere = new THREE.Mesh(geometry, material);
 
     var morph = () => {

@@ -17,11 +17,15 @@
     "typings/tsd.d.ts",
     "typings_custom/p2.d.ts",
     "typings_custom/glitch.d.ts",
+    "typings_custom/simplifymodifier.d.ts",
     
     "src/controls.ts",
+    "src/animator.ts",
+    "src/end.ts",
     "src/ellermaze.ts",
     "src/display.ts",
     "src/physics.ts",
+    "src/lowpoly.ts",
     "src/main.ts"
   ]
 }

@@ -4,7 +4,10 @@ module.exports = {
   devtool: 'source-map',
 
   context: __dirname + '/src',
-  entry: './main.ts',
+  entry: {
+    main: './main.ts',
+    obj: './lowpoly.ts'
+  },
   resolve: {
     extensions: ['', '.ts', '.js']
   },
@@ -17,12 +20,18 @@ module.exports = {
     ]
   },
   output: {
-    path: __dirname + '/website',
-    filename: "bundle.js"
+    path: __dirname,
+    filename: "[name].bundle.js"
   },
   plugins: [
     new webpack.ProvidePlugin({
-      THREE: "three"
+      THREE: __dirname + "/src/lib/three"
     })
-  ]
+  ],
+  devServer: {
+    contentBase: ".",
+    noInfo: true,
+    hot: true,
+    inline: true
+  }
 }

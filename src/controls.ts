@@ -1,4 +1,4 @@
-export default class Controls{
+export class Controls{
   turn: number;
   up: number;
   

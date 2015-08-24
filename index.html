@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <link href='http://fonts.googleapis.com/css?family=Open+Sans+Condensed:300' rel='stylesheet' type='text/css'>
-    <title>amaze!</title>
+    <title>Amaze</title>
   </head>
   <style>
       body {
@@ -19,6 +19,8 @@
         bottom:10%;left:10%;
         font-size: 4vmin;
         color: #000;
+        text-transform: uppercase;
+        letter-spacing: .3em;
       }
       #fullscreen{
         position: absolute;
@@ -34,6 +36,6 @@
       var PRODUCTION = true;
       (function(){var script=document.createElement('script');script.onload=function(){var stats=new Stats();stats.domElement.style.cssText='position:fixed;left:0;top:0;z-index:10000';document.body.appendChild(stats.domElement);requestAnimationFrame(function loop(){stats.update();requestAnimationFrame(loop)});};script.src='//rawgit.com/mrdoob/stats.js/master/build/stats.min.js';document.head.appendChild(script);})()
     </script>
-    <script type="text/javascript" src="bundle.js" charset="utf-8"></script>    
+    <script type="text/javascript" src="main.bundle.js" charset="utf-8"></script>    
   </body>
 </html>

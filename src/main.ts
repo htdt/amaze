@@ -1,7 +1,7 @@
-import Physics from "./physics";
-import Display3D from "./display";
-import Controls from "./controls";
-import EllerMaze from "./ellermaze"
+import {Physics} from "./physics";
+import {Display3D} from "./display";
+import {Controls} from "./controls";
+import {EllerMaze} from "./ellermaze"
 
 
 function fullscreen(el){
@@ -18,7 +18,8 @@ function fullscreen(el){
 
 function InitUI(){
   var fsIcon = document.getElementById("fullscreen");
-  fsIcon.addEventListener("click", () => fullscreen(document.body), false);
+  if (fsIcon)
+    fsIcon.addEventListener("click", () => fullscreen(document.body), false);
 }
 
 class WorldObject{
@@ -52,8 +53,6 @@ class World{
   prevLoopTS: number;
   worldObjects: WorldObject[];
   hitCounter: number;
-  performanceTimer: number[];
-  performanceStep: number;
   msg: string[];
   msgDisplay: HTMLElement;
 
@@ -65,40 +64,25 @@ class World{
     this.display = new Display3D();
     this.maze = EllerMaze(10,10);
     
-    let ppos = this.getRandomPosition();
+    let ppos = {x:1,y:1};//this.getRandomPosition();
     this.me = new Player(this.display.player, this.phys.player, [ppos.x, ppos.y]);
     this.worldObjects = [this.me];
     this.hitCounter = 0;
-
-    this.performanceTimer = [0,0];
-    this.performanceStep = 0;
     
     this.buildWallsAndFloor();    
     this.addTarget(this.getRandomPosition());
     this.mainLoop();
-
-    setInterval(()=>{
-      console.log(this.performanceTimer.map(v=>(v/this.performanceStep)).join(" "));
-    },5000);
   }
   
   mainLoop(ts = null) {
-    let perfd = [];
     let dt = this.prevLoopTS ? ts - this.prevLoopTS : 1000/60;
+    if (dt>100) dt = 100;
 
-    perfd[0] = performance.now();
     this.phys.world.step(dt/1000);
-    perfd[1] = performance.now();
     this.me.move(dt);
     this.worldObjects.forEach(g=>g.up(this.display));
     this.display.moveCamera(this.me.angle);
-    perfd[2] = performance.now();
     this.display.render();
-    perfd[3] = performance.now();
-
-    this.performanceTimer[0] += perfd[1]-perfd[0];
-    this.performanceTimer[1] += perfd[3]-perfd[2];
-    this.performanceStep++;
 
     this.prevLoopTS = ts;
     requestAnimationFrame((ts) => this.mainLoop(ts));
@@ -148,7 +132,8 @@ class World{
         this.display.scene.remove(d);
         this.display.animator.stop(d);
 
-        this.msgDisplay.innerText += this.msg[this.hitCounter++];
+        if (this.msgDisplay)
+          this.msgDisplay.innerText += this.msg[this.hitCounter++];
 
         this.display.glitchMe(100).then(() => {
           let {animation, view } = this.display.createGalaxy(pos);

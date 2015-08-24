@@ -14,8 +14,11 @@
     "webrtc/MediaStream.d.ts": {
       "commit": "977da240f263e88215a27cb44f2e31524ca07135"
     },
-    "es6-shim/es6-shim.d.ts": {
-      "commit": "f6c8ca47193fb67947944a3170912672ac3e908e"
+    "whatwg-fetch/whatwg-fetch.d.ts": {
+      "commit": "c5a2f44bab06cf9f2bcc14530171daac1cebff6c"
+    },
+    "es6-promise/es6-promise.d.ts": {
+      "commit": "c5a2f44bab06cf9f2bcc14530171daac1cebff6c"
     }
   }
 }

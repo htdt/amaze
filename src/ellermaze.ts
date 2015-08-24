@@ -1,6 +1,6 @@
 //algorithm http://www.neocomputer.org/projects/eller.html
 
-export default function EllerMaze(width=16, height=16) {
+export function EllerMaze(width=16, height=16) {
   
   var curstr = [];
   var map = [];
@@ -17,7 +17,7 @@ export default function EllerMaze(width=16, height=16) {
   drawline(last(), false);
   border();
 
-  log();
+  //log();
   return map;
 
   function log(){
