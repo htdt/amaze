@@ -20,6 +20,7 @@
     "typings_custom/simplifymodifier.d.ts",
     
     "src/controls.ts",
+    "src/shaders.ts",
     "src/animator.ts",
     "src/end.ts",
     "src/ellermaze.ts",

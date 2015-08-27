@@ -16,26 +16,28 @@ export class Physics{
   player: p2.Body;
   wallMaterial: p2.Material;
   galaxyMaterial: p2.Material;
+  targetMaterial: p2.Material;
 
   constructor(){
     this.world = new p2.World({gravity:[0,0]});
     this.interact = [];
 
-    var playerShape = new p2.Circle({radius:.25});
+    var playerShape = new p2.Circle({radius:1/3});
     this.player = new p2.Body({mass:1, position:[0,0]});
     this.player.addShape(playerShape);
-    this.player.damping = .7;
+    this.player.damping = .5;
     this.world.addBody(this.player);
 
     let playerMaterial = new p2.Material();
     this.wallMaterial = new p2.Material();
     this.galaxyMaterial = new p2.Material();
+    this.targetMaterial = new p2.Material();
     
     playerShape.material = playerMaterial;
 
     this.world.addContactMaterial(new p2.ContactMaterial(
       this.wallMaterial, playerMaterial,
-      {restitution : .6, stiffness : Number.MAX_VALUE}));
+      {restitution : 1, stiffness : 500}));
 
     this.world.addContactMaterial(new p2.ContactMaterial(
       this.wallMaterial, this.galaxyMaterial,
@@ -43,7 +45,11 @@ export class Physics{
 
     this.world.addContactMaterial(new p2.ContactMaterial(
       playerMaterial, this.galaxyMaterial,
-      {restitution : 1, stiffness : 10}));
+      {restitution : 1, stiffness : 7}));
+
+    this.world.addContactMaterial(new p2.ContactMaterial(
+      this.targetMaterial, playerMaterial,
+      {restitution : 2, stiffness : Number.MAX_VALUE}));
 
     this.world.on("impact", (evt) => {
       for (let i=0, len=this.interact.length;i<len;i++)
@@ -69,7 +75,7 @@ export class Physics{
   addTarget(x,y){
       let t = new p2.Body({mass:50, position:[x,y]});
       let tShape = new p2.Circle({radius:.5});
-      tShape.material = this.wallMaterial;
+      tShape.material = this.targetMaterial;
       t.addShape(tShape);
       this.world.addBody(t);
       return t;
@@ -80,7 +86,7 @@ export class Physics{
   }
 
   createGalaxy(pos: number[]){
-    let shape = new p2.Circle({radius:1});
+    let shape = new p2.Circle({radius:1/1.25});
     let g = new p2.Body({mass:25, position: pos});
     shape.material = this.galaxyMaterial;
     g.addShape(shape);

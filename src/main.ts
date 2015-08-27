@@ -23,7 +23,7 @@ function InitUI(){
 }
 
 class WorldObject{
-  constructor(public view: THREE.Mesh, public body: p2.Body){}
+  constructor(public view: any, public body: p2.Body){}
   up(display: Display3D){display.moveObject(this.view, this.body);}
 }
 
@@ -31,7 +31,7 @@ class Player extends WorldObject{
   keyb: Controls;
   angle: number;
 
-  constructor(view: THREE.Mesh, body: p2.Body, pos: number[]){
+  constructor(view: THREE.Object3D, body: p2.Body, pos: number[]){
     super(view, body);
     this.keyb = new Controls();
     this.angle = 0;
@@ -55,16 +55,17 @@ class World{
   hitCounter: number;
   msg: string[];
   msgDisplay: HTMLElement;
+  timer: number;
 
   constructor(){
-    this.msg = ["Reality"," does not"," exist"," until"," it is"," measured."];
+    this.msg = ["Reality"," doesn’t"," exist"," until"," you"," look"," at&nbsp;it"];
     this.msgDisplay = document.getElementById("msg");
 
     this.phys = new Physics();
     this.display = new Display3D();
     this.maze = EllerMaze(10,10);
     
-    let ppos = {x:1,y:1};//this.getRandomPosition();
+    let ppos = this.getRandomPosition();
     this.me = new Player(this.display.player, this.phys.player, [ppos.x, ppos.y]);
     this.worldObjects = [this.me];
     this.hitCounter = 0;
@@ -72,6 +73,18 @@ class World{
     this.buildWallsAndFloor();    
     this.addTarget(this.getRandomPosition());
     this.mainLoop();
+
+    this.timer = 0;
+    
+    this.display.animator.play({
+      func: _=> {
+        this.display.moreDust();
+        this.timer ++;
+      },
+      duration: 10000,
+      loop: true,
+      timer: true
+    });
   }
   
   mainLoop(ts = null) {
@@ -82,7 +95,7 @@ class World{
     this.me.move(dt);
     this.worldObjects.forEach(g=>g.up(this.display));
     this.display.moveCamera(this.me.angle);
-    this.display.render();
+    this.display.render(dt);
 
     this.prevLoopTS = ts;
     requestAnimationFrame((ts) => this.mainLoop(ts));
@@ -129,11 +142,11 @@ class World{
         if (i>=0) this.worldObjects.splice(i,1);
 
         this.phys.world.removeBody(p);
-        this.display.scene.remove(d);
+        this.display.mazeHolder.remove(d);
         this.display.animator.stop(d);
 
         if (this.msgDisplay)
-          this.msgDisplay.innerText += this.msg[this.hitCounter++];
+          this.msgDisplay.innerHTML += this.msg[this.hitCounter++];
 
         this.display.glitchMe(100).then(() => {
           let {animation, view } = this.display.createGalaxy(pos);

@@ -2,6 +2,7 @@
 
 import {Animator} from "./animator";
 import {HeadObject} from "./end";
+import {spaceVertexShader, spaceFragmentShader} from "./shaders";
 
 import './glitch/CopyShader';
 import './glitch/DigitalGlitch';
@@ -22,39 +23,47 @@ export class Display3D{
   static scale = 50;
 
   scene: THREE.Scene;
+  resolution: THREE.Vector2;
+  mazeHolder: THREE.Object3D;
   camera: THREE.PerspectiveCamera;
   renderer: THREE.WebGLRenderer;
   animator: Animator;
 
   light: THREE.Light;
-  playerMaterial: THREE.MeshPhongMaterial;
-  player: THREE.Mesh;
+  player: THREE.Object3D;
   protoGalaxy: THREE.Mesh;
+  dustGeometry: THREE.Geometry;
+  dustMaterial: THREE.PointCloudMaterial;
+  morphingSphere: THREE.Mesh;
+  spaceMaterial: THREE.ShaderMaterial;
+
   glitch: boolean;
   glitchComposer: THREE.EffectComposer;
-  morphingSphere: THREE.Mesh;
-
 
   constructor(){
-    let w = window.innerWidth;
-    let h = window.innerHeight;
+    this.resolution = new THREE.Vector2(window.innerWidth, window.innerHeight);
     this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(75, w/h, 1, 1000);
-    this.camera.position.y = Display3D.scale*3/2;
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    this.camera = new THREE.PerspectiveCamera(75, this.resolution.x/this.resolution.y, 1, 1000);
+    this.camera.position.y = Display3D.scale*2.5;
+    this.renderer = new THREE.WebGLRenderer();
     this.renderer.setPixelRatio( window.devicePixelRatio );
-    this.renderer.setSize( w, h );
+    this.renderer.setSize(this.resolution.x, this.resolution.y);
     this.renderer.setClearColor(0xffffff);
     this.scene.fog = new THREE.FogExp2(0xffffff,0.004);
     document.body.appendChild(this.renderer.domElement);
     window.addEventListener('resize', () => {
-      this.camera.aspect = window.innerWidth / window.innerHeight;
+      this.resolution.set(window.innerWidth, window.innerHeight);
+      this.camera.aspect = this.resolution.x / this.resolution.y;
       this.camera.updateProjectionMatrix();
-      this.renderer.setSize(window.innerWidth, window.innerHeight);
+      this.renderer.setSize(this.resolution.x, this.resolution.y);
     }, false);
+
+    this.mazeHolder = new THREE.Object3D();
+    this.scene.add(this.mazeHolder);
 
     this.animator = new Animator();
     this.glitch = false;
+    this.initSpaceMaterial();
     this.initPlayer();
     this.initLight();
     this.initProtoGalaxy();
@@ -107,24 +116,69 @@ export class Display3D{
   }
 
   initLight(): void{
-    this.scene.add(new THREE.AmbientLight(0xaaaaaa));
+    this.scene.add(new THREE.AmbientLight(0x999999));
+    this.light = new THREE.PointLight(0xffffff, .1);
+    this.light.position.y = Display3D.scale*10;
+    this.scene.add(this.light);
+  }
 
-    this.light = new THREE.PointLight(0xffffff, .3);
-    this.light.position.y = Display3D.scale;
-    this.light.position.x = Display3D.scale;
-    this.light.position.z = Display3D.scale*4;
-    //this.scene.add(this.light);
+  initShadowLight(): void{
+    this.renderer.shadowMapEnabled = true;
+    this.renderer.shadowMapType = THREE.PCFShadowMap;
+
+    var shadowLight = new THREE.DirectionalLight(0,1);
+    shadowLight.position.set(this.player.position.x,50*Display3D.scale,this.player.position.z);
+    shadowLight.castShadow = true;
+    shadowLight.onlyShadow = true;
+    shadowLight.shadowDarkness = .25;
+    shadowLight.shadowMapWidth = 512;
+    shadowLight.shadowMapHeight = 512;
+    shadowLight.target = this.player;
+    this.scene.add(shadowLight);
+  }
+
+  initSpaceMaterial(): void{
+    this.spaceMaterial = new THREE.ShaderMaterial({
+      vertexShader: spaceVertexShader,
+      fragmentShader: spaceFragmentShader,
+      uniforms: {
+        iResolution: { type: 'v2', value: this.resolution },
+        iGlobalTime: { type: 'f', value: 0 },
+        fogDensity: { type: "f", value: 0 },
+        fogColor: { type: "c", value: new THREE.Vector3() },
+      },
+      fog: true
+    });
   }
 
   initPlayer(): void{
-    this.playerMaterial = new THREE.MeshPhongMaterial({color: 0, wireframe:true});
-    this.player = new THREE.Mesh(new THREE.OctahedronGeometry(Display3D.scale/4, 1), this.playerMaterial);
+
+    var playerWire = new THREE.Mesh(
+      new THREE.OctahedronGeometry(Display3D.scale/3, 0),
+      new THREE.MeshBasicMaterial({color: 0, wireframe: true})
+    );
+
+    //OctahedronGeometry
+    //IcosahedronGeometry
+
+    var playerSphere = new THREE.Mesh(
+      new THREE.SphereGeometry(Display3D.scale/8, 16, 16),
+      this.spaceMaterial
+    );
+
+    this.player = new THREE.Object3D();
+    this.player.add(playerSphere);
+    this.player.add(playerWire);
 
     this.player.position.y = 0;
-    this.scene.add(this.player);
+    //this.player.castShadow = true;
+    this.mazeHolder.add(this.player);
 
     this.animator.play({
-      func: dt => this.player.position.y = Math.sin(dt*Math.PI*2)*Display3D.scale/16,
+      func: dt => {
+        this.player.position.y = Math.sin(dt*Math.PI*2)*Display3D.scale/16;
+        playerWire.rotation.z = dt*Math.PI;
+      },
       duration: 2500,
       loop: true});
   }
@@ -138,13 +192,13 @@ export class Display3D{
     plane.position.x = w*Display3D.scale/2 - Display3D.scale/2;
     plane.position.z = h*Display3D.scale/2 - Display3D.scale/2;
     plane.position.y = -Display3D.scale/2;
-    plane.receiveShadow = true;
-    this.scene.add(plane);
+    //plane.receiveShadow = true;
+    this.mazeHolder.add(plane);
 
-    //this.light.position.x = w*Display3D.scale/2;
-    //this.light.position.z = h*Display3D.scale/2;
+    this.light.position.x = w*Display3D.scale/2;
+    this.light.position.z = h*Display3D.scale/2;
 
-    this.addDiffusedDust(w,h);
+    this.initDust(w,h);
   }
 
   addWall(x:number, y:number): THREE.Mesh {
@@ -155,7 +209,7 @@ export class Display3D{
     );
     curWall.position.x = x*Display3D.scale;
     curWall.position.z = y*Display3D.scale;
-    this.scene.add(curWall);
+    this.mazeHolder.add(curWall);
     return curWall;
   }
 
@@ -170,18 +224,14 @@ export class Display3D{
     this.camera.position.z = this.player.position.z - Math.sin(q)*Display3D.scale*2;
     this.camera.position.y = Display3D.scale*2.5;
     this.camera.lookAt(new THREE.Vector3(
-      this.player.position.x, Display3D.scale, this.player.position.z));
+      this.player.position.x, Display3D.scale*1.25, this.player.position.z));
   }
 
 
   initProtoGalaxy(): void{
-    var textureEquirec = THREE.ImageUtils.loadTexture("media/space.jpg");
-    textureEquirec.minFilter = THREE.NearestFilter;// or THREE.LinearFilter
-    textureEquirec.format = THREE.RGBAFormat;
-    textureEquirec.mapping = THREE.EquirectangularRefractionMapping;
     this.protoGalaxy = new THREE.Mesh(
-      new THREE.SphereGeometry(Display3D.scale, 16, 16),
-      new THREE.MeshBasicMaterial({envMap:textureEquirec})
+      new THREE.SphereGeometry(Display3D.scale/1.25, 16, 16),
+      this.spaceMaterial
     );
   }
 
@@ -230,7 +280,7 @@ export class Display3D{
 
     let g = this.protoGalaxy.clone();
     g.position.set(pos.x, pos.y, pos.z);
-    this.scene.add(g);
+    this.mazeHolder.add(g);
 
     return {
       animation: this.animator.play({
@@ -252,63 +302,56 @@ export class Display3D{
     }
   }
 
-  addDiffusedDust(w,h): void{
-    let dustGeometry = new THREE.Geometry();
+  initDust(w,h): void{
+    this.dustGeometry = new THREE.Geometry();
 
-    //console.log(w,h);
-    for (let i=0;i<w*h;i++)
-      dustGeometry.vertices.push(new THREE.Vector3(
+    for (let i=0;i<w*h/5;i++)
+      this.dustGeometry.vertices.push(new THREE.Vector3(
         Math.random() * (w+6) * Display3D.scale - Display3D.scale*3,
         Math.random() * 6 * Display3D.scale - Display3D.scale*3,
         Math.random() * (h+6) * Display3D.scale - Display3D.scale*3
       ));
 
-    let material = new THREE.PointCloudMaterial({size: 3, color:0x999999, fog: true});
+    this.dustMaterial = new THREE.PointCloudMaterial({
+      size: 3,color:0,fog: true});
 
-    var moreDust = () => {
-      let p=[];
-      for (let i1=0;i1<5;i1++)
-        p[i1] = (Math.random()-.5)*Display3D.scale*6;
+    this.moreDust();
+  }
 
-      let body = new THREE.PointCloud(dustGeometry,material);
-      let v1 = new THREE.Vector3(p[0],Display3D.scale*6,p[1]);
-      let v2 = new THREE.Vector3(p[2],p[3],p[4]);
-      body.position.copy(v1);
-      this.scene.add(body);
+  moreDust(): void{
+    let p=[];
+    for (let i1=0;i1<5;i1++)
+      p[i1] = (Math.random()-.5)*Display3D.scale*6;
 
-      let changeSpeed = 5000 + 30000 * Math.random();
+    let body = new THREE.PointCloud(this.dustGeometry,this.dustMaterial);
+    let v1 = new THREE.Vector3(p[0],Display3D.scale*6,p[1]);
+    let v2 = new THREE.Vector3(p[2],p[3],p[4]);
+    body.position.copy(v1);
+    this.mazeHolder.add(body);
 
-      this.animator.play({
-        func: dt => {
-          let v = new THREE.Vector3();
-          let dtEasing = -2*dt*dt*(2*dt-3)/2;
-          v.subVectors(v2,v1).multiplyScalar(dtEasing).add(v1);
-          body.position.copy(v);
-        },
-        duration: changeSpeed,
-        loop: true
-      });
+    let changeSpeed = 5000 + 30000 * Math.random();
 
-      this.animator.play({
-        func: _=> {
-         v1.copy(v2);
-         v2.set(
-            (Math.random()-.5)*Display3D.scale*6,
-            (Math.random()-.5)*Display3D.scale*6,
-            (Math.random()-.5)*Display3D.scale*6
-          );
-        },
-        duration: changeSpeed,
-        loop: true,
-        timer: true
-      });
-    }
-
-    moreDust();
-    
     this.animator.play({
-      func: _=> moreDust(),
-      duration: 10000,
+      func: dt => {
+        let v = new THREE.Vector3();
+        let dtEasing = -2*dt*dt*(2*dt-3)/2;
+        v.subVectors(v2,v1).multiplyScalar(dtEasing).add(v1);
+        body.position.copy(v);
+      },
+      duration: changeSpeed,
+      loop: true
+    });
+
+    this.animator.play({
+      func: _=> {
+       v1.copy(v2);
+       v2.set(
+          (Math.random()-.5)*Display3D.scale*6,
+          (Math.random()-.5)*Display3D.scale*6,
+          (Math.random()-.5)*Display3D.scale*6
+        );
+      },
+      duration: changeSpeed,
       loop: true,
       timer: true
     });
@@ -361,6 +404,8 @@ export class Display3D{
       shininess: 25});
     this.morphingSphere = new THREE.Mesh(geometry, material);
 
+    //this.morphingSphere.castShadow = true;
+
     var morph = () => {
       morphing = true;
       this.animator.play({
@@ -396,7 +441,7 @@ export class Display3D{
     let s = this.morphingSphere.clone();
     s.position.x = x*Display3D.scale;
     s.position.z = y*Display3D.scale;
-    this.scene.add(s);
+    this.mazeHolder.add(s);
 
     this.animator.play({
       func: (dt) => {
@@ -410,7 +455,8 @@ export class Display3D{
     return s;
   }
 
-  render(): void{
+  render(dt:number): void{
+    this.spaceMaterial.uniforms.iGlobalTime.value += dt/1000;
     this.animator.step();
     if (this.glitch) this.glitchComposer.render();
     else this.renderer.render(this.scene, this.camera);
