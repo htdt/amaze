@@ -52,8 +52,8 @@
 	};
 	var physics_1 = __webpack_require__(1);
 	var display_1 = __webpack_require__(63);
-	var controls_1 = __webpack_require__(73);
-	var ellermaze_1 = __webpack_require__(74);
+	var controls_1 = __webpack_require__(74);
+	var ellermaze_1 = __webpack_require__(75);
 	function fullscreen(el) {
 	    if (el.requestFullscreen) {
 	        el.requestFullscreen();
@@ -98,18 +98,29 @@
 	})(WorldObject);
 	var World = (function () {
 	    function World() {
-	        this.msg = ["Reality", " does not", " exist", " until", " it is", " measured."];
+	        var _this = this;
+	        this.msg = ["Reality", " doesn’t", " exist", " until", " you", " look", " at&nbsp;it"];
 	        this.msgDisplay = document.getElementById("msg");
 	        this.phys = new physics_1.Physics();
 	        this.display = new display_1.Display3D();
 	        this.maze = ellermaze_1.EllerMaze(10, 10);
-	        var ppos = { x: 1, y: 1 };
+	        var ppos = this.getRandomPosition();
 	        this.me = new Player(this.display.player, this.phys.player, [ppos.x, ppos.y]);
 	        this.worldObjects = [this.me];
 	        this.hitCounter = 0;
 	        this.buildWallsAndFloor();
 	        this.addTarget(this.getRandomPosition());
 	        this.mainLoop();
+	        this.timer = 0;
+	        this.display.animator.play({
+	            func: function (_) {
+	                _this.display.moreDust();
+	                _this.timer++;
+	            },
+	            duration: 10000,
+	            loop: true,
+	            timer: true
+	        });
 	    }
 	    World.prototype.mainLoop = function (ts) {
 	        var _this = this;
@@ -121,7 +132,7 @@
 	        this.me.move(dt);
 	        this.worldObjects.forEach(function (g) { return g.up(_this.display); });
 	        this.display.moveCamera(this.me.angle);
-	        this.display.render();
+	        this.display.render(dt);
 	        this.prevLoopTS = ts;
 	        requestAnimationFrame(function (ts) { return _this.mainLoop(ts); });
 	    };
@@ -163,10 +174,10 @@
 	                if (i >= 0)
 	                    _this.worldObjects.splice(i, 1);
 	                _this.phys.world.removeBody(p);
-	                _this.display.scene.remove(d);
+	                _this.display.mazeHolder.remove(d);
 	                _this.display.animator.stop(d);
 	                if (_this.msgDisplay)
-	                    _this.msgDisplay.innerText += _this.msg[_this.hitCounter++];
+	                    _this.msgDisplay.innerHTML += _this.msg[_this.hitCounter++];
 	                _this.display.glitchMe(100).then(function () {
 	                    var _a = _this.display.createGalaxy(pos), animation = _a.animation, view = _a.view;
 	                    animation.then(function () {
@@ -192,18 +203,20 @@
 	        var _this = this;
 	        this.world = new p2.World({ gravity: [0, 0] });
 	        this.interact = [];
-	        var playerShape = new p2.Circle({ radius: .25 });
+	        var playerShape = new p2.Circle({ radius: 1 / 3 });
 	        this.player = new p2.Body({ mass: 1, position: [0, 0] });
 	        this.player.addShape(playerShape);
-	        this.player.damping = .7;
+	        this.player.damping = .5;
 	        this.world.addBody(this.player);
 	        var playerMaterial = new p2.Material();
 	        this.wallMaterial = new p2.Material();
 	        this.galaxyMaterial = new p2.Material();
+	        this.targetMaterial = new p2.Material();
 	        playerShape.material = playerMaterial;
-	        this.world.addContactMaterial(new p2.ContactMaterial(this.wallMaterial, playerMaterial, { restitution: .6, stiffness: Number.MAX_VALUE }));
+	        this.world.addContactMaterial(new p2.ContactMaterial(this.wallMaterial, playerMaterial, { restitution: 1, stiffness: 500 }));
 	        this.world.addContactMaterial(new p2.ContactMaterial(this.wallMaterial, this.galaxyMaterial, { restitution: 1, stiffness: 100 }));
-	        this.world.addContactMaterial(new p2.ContactMaterial(playerMaterial, this.galaxyMaterial, { restitution: 1, stiffness: 10 }));
+	        this.world.addContactMaterial(new p2.ContactMaterial(playerMaterial, this.galaxyMaterial, { restitution: 1, stiffness: 7 }));
+	        this.world.addContactMaterial(new p2.ContactMaterial(this.targetMaterial, playerMaterial, { restitution: 2, stiffness: Number.MAX_VALUE }));
 	        this.world.on("impact", function (evt) {
 	            for (var i = 0, len = _this.interact.length; i < len; i++)
 	                if ((evt.bodyA.id == _this.interact[i].obj1.id && evt.bodyB.id == _this.interact[i].obj2.id) ||
@@ -226,7 +239,7 @@
 	    Physics.prototype.addTarget = function (x, y) {
 	        var t = new p2.Body({ mass: 50, position: [x, y] });
 	        var tShape = new p2.Circle({ radius: .5 });
-	        tShape.material = this.wallMaterial;
+	        tShape.material = this.targetMaterial;
 	        t.addShape(tShape);
 	        this.world.addBody(t);
 	        return t;
@@ -236,7 +249,7 @@
 	        return this.interact.push({ obj1: obj1, obj2: obj2, func: func, once: once }) - 1;
 	    };
 	    Physics.prototype.createGalaxy = function (pos) {
-	        var shape = new p2.Circle({ radius: 1 });
+	        var shape = new p2.Circle({ radius: 1 / 1.25 });
 	        var g = new p2.Body({ mass: 25, position: pos });
 	        shape.material = this.galaxyMaterial;
 	        g.addShape(shape);
@@ -14109,35 +14122,39 @@
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(THREE) {//THREE imported globally in webpack.config.js:25
-	var animator_1 = __webpack_require__(66);
+	var animator_1 = __webpack_require__(65);
+	var shaders_1 = __webpack_require__(66);
 	__webpack_require__(67);
 	__webpack_require__(68);
 	__webpack_require__(69);
-	__webpack_require__(65);
 	__webpack_require__(70);
 	__webpack_require__(71);
 	__webpack_require__(72);
+	__webpack_require__(73);
 	var Display3D = (function () {
 	    function Display3D() {
 	        var _this = this;
-	        var w = window.innerWidth;
-	        var h = window.innerHeight;
+	        this.resolution = new THREE.Vector2(window.innerWidth, window.innerHeight);
 	        this.scene = new THREE.Scene();
-	        this.camera = new THREE.PerspectiveCamera(75, w / h, 1, 1000);
-	        this.camera.position.y = Display3D.scale * 3 / 2;
-	        this.renderer = new THREE.WebGLRenderer({ antialias: true });
+	        this.camera = new THREE.PerspectiveCamera(75, this.resolution.x / this.resolution.y, 1, 1000);
+	        this.camera.position.y = Display3D.scale * 2.5;
+	        this.renderer = new THREE.WebGLRenderer();
 	        this.renderer.setPixelRatio(window.devicePixelRatio);
-	        this.renderer.setSize(w, h);
+	        this.renderer.setSize(this.resolution.x, this.resolution.y);
 	        this.renderer.setClearColor(0xffffff);
 	        this.scene.fog = new THREE.FogExp2(0xffffff, 0.004);
 	        document.body.appendChild(this.renderer.domElement);
 	        window.addEventListener('resize', function () {
-	            _this.camera.aspect = window.innerWidth / window.innerHeight;
+	            _this.resolution.set(window.innerWidth, window.innerHeight);
+	            _this.camera.aspect = _this.resolution.x / _this.resolution.y;
 	            _this.camera.updateProjectionMatrix();
-	            _this.renderer.setSize(window.innerWidth, window.innerHeight);
+	            _this.renderer.setSize(_this.resolution.x, _this.resolution.y);
 	        }, false);
+	        this.mazeHolder = new THREE.Object3D();
+	        this.scene.add(this.mazeHolder);
 	        this.animator = new animator_1.Animator();
 	        this.glitch = false;
+	        this.initSpaceMaterial();
 	        this.initPlayer();
 	        this.initLight();
 	        this.initProtoGalaxy();
@@ -14145,20 +14162,51 @@
 	        this.initMorphingSphere();
 	    }
 	    Display3D.prototype.initLight = function () {
-	        this.scene.add(new THREE.AmbientLight(0xaaaaaa));
-	        this.light = new THREE.PointLight(0xffffff, .3);
-	        this.light.position.y = Display3D.scale;
-	        this.light.position.x = Display3D.scale;
-	        this.light.position.z = Display3D.scale * 4;
+	        this.scene.add(new THREE.AmbientLight(0x999999));
+	        this.light = new THREE.PointLight(0xffffff, .1);
+	        this.light.position.y = Display3D.scale * 10;
+	        this.scene.add(this.light);
+	    };
+	    Display3D.prototype.initShadowLight = function () {
+	        this.renderer.shadowMapEnabled = true;
+	        this.renderer.shadowMapType = THREE.PCFShadowMap;
+	        var shadowLight = new THREE.DirectionalLight(0, 1);
+	        shadowLight.position.set(this.player.position.x, 50 * Display3D.scale, this.player.position.z);
+	        shadowLight.castShadow = true;
+	        shadowLight.onlyShadow = true;
+	        shadowLight.shadowDarkness = .25;
+	        shadowLight.shadowMapWidth = 512;
+	        shadowLight.shadowMapHeight = 512;
+	        shadowLight.target = this.player;
+	        this.scene.add(shadowLight);
+	    };
+	    Display3D.prototype.initSpaceMaterial = function () {
+	        this.spaceMaterial = new THREE.ShaderMaterial({
+	            vertexShader: shaders_1.spaceVertexShader,
+	            fragmentShader: shaders_1.spaceFragmentShader,
+	            uniforms: {
+	                iResolution: { type: 'v2', value: this.resolution },
+	                iGlobalTime: { type: 'f', value: 0 },
+	                fogDensity: { type: "f", value: 0 },
+	                fogColor: { type: "c", value: new THREE.Vector3() },
+	            },
+	            fog: true
+	        });
 	    };
 	    Display3D.prototype.initPlayer = function () {
 	        var _this = this;
-	        this.playerMaterial = new THREE.MeshPhongMaterial({ color: 0, wireframe: true });
-	        this.player = new THREE.Mesh(new THREE.OctahedronGeometry(Display3D.scale / 4, 1), this.playerMaterial);
+	        var playerWire = new THREE.Mesh(new THREE.OctahedronGeometry(Display3D.scale / 3, 0), new THREE.MeshBasicMaterial({ color: 0, wireframe: true }));
+	        var playerSphere = new THREE.Mesh(new THREE.SphereGeometry(Display3D.scale / 8, 16, 16), this.spaceMaterial);
+	        this.player = new THREE.Object3D();
+	        this.player.add(playerSphere);
+	        this.player.add(playerWire);
 	        this.player.position.y = 0;
-	        this.scene.add(this.player);
+	        this.mazeHolder.add(this.player);
 	        this.animator.play({
-	            func: function (dt) { return _this.player.position.y = Math.sin(dt * Math.PI * 2) * Display3D.scale / 16; },
+	            func: function (dt) {
+	                _this.player.position.y = Math.sin(dt * Math.PI * 2) * Display3D.scale / 16;
+	                playerWire.rotation.z = dt * Math.PI;
+	            },
 	            duration: 2500,
 	            loop: true });
 	    };
@@ -14168,16 +14216,17 @@
 	        plane.position.x = w * Display3D.scale / 2 - Display3D.scale / 2;
 	        plane.position.z = h * Display3D.scale / 2 - Display3D.scale / 2;
 	        plane.position.y = -Display3D.scale / 2;
-	        plane.receiveShadow = true;
-	        this.scene.add(plane);
-	        this.addDiffusedDust(w, h);
+	        this.mazeHolder.add(plane);
+	        this.light.position.x = w * Display3D.scale / 2;
+	        this.light.position.z = h * Display3D.scale / 2;
+	        this.initDust(w, h);
 	    };
 	    Display3D.prototype.addWall = function (x, y) {
 	        var wallMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff, shading: THREE.FlatShading });
 	        var curWall = new THREE.Mesh(new THREE.BoxGeometry(Display3D.scale, Display3D.scale, Display3D.scale), wallMaterial);
 	        curWall.position.x = x * Display3D.scale;
 	        curWall.position.z = y * Display3D.scale;
-	        this.scene.add(curWall);
+	        this.mazeHolder.add(curWall);
 	        return curWall;
 	    };
 	    Display3D.prototype.moveObject = function (displayObj, physObj) {
@@ -14189,14 +14238,10 @@
 	        this.camera.position.x = this.player.position.x - Math.cos(q) * Display3D.scale * 2;
 	        this.camera.position.z = this.player.position.z - Math.sin(q) * Display3D.scale * 2;
 	        this.camera.position.y = Display3D.scale * 2.5;
-	        this.camera.lookAt(new THREE.Vector3(this.player.position.x, Display3D.scale, this.player.position.z));
+	        this.camera.lookAt(new THREE.Vector3(this.player.position.x, Display3D.scale * 1.25, this.player.position.z));
 	    };
 	    Display3D.prototype.initProtoGalaxy = function () {
-	        var textureEquirec = THREE.ImageUtils.loadTexture("media/space.jpg");
-	        textureEquirec.minFilter = THREE.NearestFilter;
-	        textureEquirec.format = THREE.RGBAFormat;
-	        textureEquirec.mapping = THREE.EquirectangularRefractionMapping;
-	        this.protoGalaxy = new THREE.Mesh(new THREE.SphereGeometry(Display3D.scale, 16, 16), new THREE.MeshBasicMaterial({ envMap: textureEquirec }));
+	        this.protoGalaxy = new THREE.Mesh(new THREE.SphereGeometry(Display3D.scale / 1.25, 16, 16), this.spaceMaterial);
 	    };
 	    Display3D.prototype.initGlitch = function () {
 	        this.glitchComposer = new THREE.EffectComposer(this.renderer);
@@ -14235,7 +14280,7 @@
 	        this.scene.add(lines);
 	        var g = this.protoGalaxy.clone();
 	        g.position.set(pos.x, pos.y, pos.z);
-	        this.scene.add(g);
+	        this.mazeHolder.add(g);
 	        return {
 	            animation: this.animator.play({
 	                func: function (dt) {
@@ -14254,46 +14299,40 @@
 	            view: g
 	        };
 	    };
-	    Display3D.prototype.addDiffusedDust = function (w, h) {
-	        var _this = this;
-	        var dustGeometry = new THREE.Geometry();
-	        for (var i = 0; i < w * h; i++)
-	            dustGeometry.vertices.push(new THREE.Vector3(Math.random() * (w + 6) * Display3D.scale - Display3D.scale * 3, Math.random() * 6 * Display3D.scale - Display3D.scale * 3, Math.random() * (h + 6) * Display3D.scale - Display3D.scale * 3));
-	        var material = new THREE.PointCloudMaterial({ size: 3, color: 0x999999, fog: true });
-	        var moreDust = function () {
-	            var p = [];
-	            for (var i1 = 0; i1 < 5; i1++)
-	                p[i1] = (Math.random() - .5) * Display3D.scale * 6;
-	            var body = new THREE.PointCloud(dustGeometry, material);
-	            var v1 = new THREE.Vector3(p[0], Display3D.scale * 6, p[1]);
-	            var v2 = new THREE.Vector3(p[2], p[3], p[4]);
-	            body.position.copy(v1);
-	            _this.scene.add(body);
-	            var changeSpeed = 5000 + 30000 * Math.random();
-	            _this.animator.play({
-	                func: function (dt) {
-	                    var v = new THREE.Vector3();
-	                    var dtEasing = -2 * dt * dt * (2 * dt - 3) / 2;
-	                    v.subVectors(v2, v1).multiplyScalar(dtEasing).add(v1);
-	                    body.position.copy(v);
-	                },
-	                duration: changeSpeed,
-	                loop: true
-	            });
-	            _this.animator.play({
-	                func: function (_) {
-	                    v1.copy(v2);
-	                    v2.set((Math.random() - .5) * Display3D.scale * 6, (Math.random() - .5) * Display3D.scale * 6, (Math.random() - .5) * Display3D.scale * 6);
-	                },
-	                duration: changeSpeed,
-	                loop: true,
-	                timer: true
-	            });
-	        };
-	        moreDust();
+	    Display3D.prototype.initDust = function (w, h) {
+	        this.dustGeometry = new THREE.Geometry();
+	        for (var i = 0; i < w * h / 5; i++)
+	            this.dustGeometry.vertices.push(new THREE.Vector3(Math.random() * (w + 6) * Display3D.scale - Display3D.scale * 3, Math.random() * 6 * Display3D.scale - Display3D.scale * 3, Math.random() * (h + 6) * Display3D.scale - Display3D.scale * 3));
+	        this.dustMaterial = new THREE.PointCloudMaterial({
+	            size: 3, color: 0, fog: true });
+	        this.moreDust();
+	    };
+	    Display3D.prototype.moreDust = function () {
+	        var p = [];
+	        for (var i1 = 0; i1 < 5; i1++)
+	            p[i1] = (Math.random() - .5) * Display3D.scale * 6;
+	        var body = new THREE.PointCloud(this.dustGeometry, this.dustMaterial);
+	        var v1 = new THREE.Vector3(p[0], Display3D.scale * 6, p[1]);
+	        var v2 = new THREE.Vector3(p[2], p[3], p[4]);
+	        body.position.copy(v1);
+	        this.mazeHolder.add(body);
+	        var changeSpeed = 5000 + 30000 * Math.random();
 	        this.animator.play({
-	            func: function (_) { return moreDust(); },
-	            duration: 10000,
+	            func: function (dt) {
+	                var v = new THREE.Vector3();
+	                var dtEasing = -2 * dt * dt * (2 * dt - 3) / 2;
+	                v.subVectors(v2, v1).multiplyScalar(dtEasing).add(v1);
+	                body.position.copy(v);
+	            },
+	            duration: changeSpeed,
+	            loop: true
+	        });
+	        this.animator.play({
+	            func: function (_) {
+	                v1.copy(v2);
+	                v2.set((Math.random() - .5) * Display3D.scale * 6, (Math.random() - .5) * Display3D.scale * 6, (Math.random() - .5) * Display3D.scale * 6);
+	            },
+	            duration: changeSpeed,
 	            loop: true,
 	            timer: true
 	        });
@@ -14373,7 +14412,7 @@
 	        var s = this.morphingSphere.clone();
 	        s.position.x = x * Display3D.scale;
 	        s.position.z = y * Display3D.scale;
-	        this.scene.add(s);
+	        this.mazeHolder.add(s);
 	        this.animator.play({
 	            func: function (dt) {
 	                s.rotation.x = dt * Math.PI;
@@ -14384,7 +14423,8 @@
 	        });
 	        return s;
 	    };
-	    Display3D.prototype.render = function () {
+	    Display3D.prototype.render = function (dt) {
+	        this.spaceMaterial.uniforms.iGlobalTime.value += dt / 1000;
 	        this.animator.step();
 	        if (this.glitch)
 	            this.glitchComposer.render();
@@ -49552,64 +49592,6 @@
 
 /***/ },
 /* 65 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/* WEBPACK VAR INJECTION */(function(THREE) {/**
-	 * @author alteredq / http://alteredqualia.com/
-	 */
-	
-	THREE.RenderPass = function ( scene, camera, overrideMaterial, clearColor, clearAlpha ) {
-	
-		this.scene = scene;
-		this.camera = camera;
-	
-		this.overrideMaterial = overrideMaterial;
-	
-		this.clearColor = clearColor;
-		this.clearAlpha = ( clearAlpha !== undefined ) ? clearAlpha : 1;
-	
-		this.oldClearColor = new THREE.Color();
-		this.oldClearAlpha = 1;
-	
-		this.enabled = true;
-		this.clear = true;
-		this.needsSwap = false;
-	
-	};
-	
-	THREE.RenderPass.prototype = {
-	
-		render: function ( renderer, writeBuffer, readBuffer, delta ) {
-	
-			this.scene.overrideMaterial = this.overrideMaterial;
-	
-			if ( this.clearColor ) {
-	
-				this.oldClearColor.copy( renderer.getClearColor() );
-				this.oldClearAlpha = renderer.getClearAlpha();
-	
-				renderer.setClearColor( this.clearColor, this.clearAlpha );
-	
-			}
-	
-			renderer.render( this.scene, this.camera, readBuffer, this.clear );
-	
-			if ( this.clearColor ) {
-	
-				renderer.setClearColor( this.oldClearColor, this.oldClearAlpha );
-	
-			}
-	
-			this.scene.overrideMaterial = null;
-	
-		}
-	
-	};
-	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(64)))
-
-/***/ },
-/* 66 */
 /***/ function(module, exports) {
 
 	var Animator = (function () {
@@ -49655,6 +49637,14 @@
 	})();
 	exports.Animator = Animator;
 	//# sourceMappingURL=animator.js.map
+
+/***/ },
+/* 66 */
+/***/ function(module, exports) {
+
+	exports.spaceVertexShader = "\n  varying vec2 vUV;\n  void main(void){\n    gl_Position = projectionMatrix *modelViewMatrix  * vec4(position,1.0);\n    vUV = gl_Position.xy / gl_Position.w;\n  }\n";
+	exports.spaceFragmentShader = "\n  // Star Nest by Pablo Rom\u00E1n Andrioli\n\n  // This content is under the MIT License.\n\n  #define iterations 17\n  #define formuparam 0.53\n\n  #define volsteps 5\n  #define stepsize 0.33\n\n  #define zoom   0.800\n  #define tile   0.850\n  #define speed  0.004 \n\n  #define brightness 0.0015\n  #define darkmatter 0.300\n  #define distfading 0.730\n  #define saturation 0.850\n\n  varying vec2 vUV;\n  uniform float iGlobalTime;\n  uniform vec2 iResolution;\n  uniform float fogDensity;\n  uniform vec3 fogColor;\n\n  void main(void)\n  {\n    vec2 uv=vUV;//fragCoord.xy/iResolution.xy-.5;\n    uv.y*=iResolution.y/iResolution.x;\n    vec3 dir=vec3(uv*zoom,1.);\n    float time=iGlobalTime*speed+.25;\n\n    //mouse rotation\n    float a1=.5+.1;\n    float a2=.8+.1;\n    mat2 rot1=mat2(cos(a1),sin(a1),-sin(a1),cos(a1));\n    mat2 rot2=mat2(cos(a2),sin(a2),-sin(a2),cos(a2));\n    dir.xz*=rot1;\n    dir.xy*=rot2;\n    vec3 from=vec3(1.,.5,0.5);\n    from+=vec3(time*2.,time,-2.);\n    from.xz*=rot1;\n    from.xy*=rot2;\n    \n    //volumetric rendering\n    float s=0.1,fade=1.;\n    vec3 v=vec3(0.);\n    for (int r=0; r<volsteps; r++) {\n      vec3 p=from+s*dir*.5;\n      p = abs(vec3(tile)-mod(p,vec3(tile*2.))); // tiling fold\n      float pa,a=pa=0.;\n      for (int i=0; i<iterations; i++) { \n        p=abs(p)/dot(p,p)-formuparam; // the magic formula\n        a+=abs(length(p)-pa); // absolute sum of average change\n        pa=length(p);\n      }\n      float dm=max(0.,darkmatter-a*a*.001); //dark matter\n      a*=a*a; // add contrast\n      if (r>6) fade*=1.-dm; // dark matter, don't render near\n      //v+=vec3(dm,dm*.5,0.);\n      v+=fade;\n      v+=vec3(s,s*s,s*s*s*s)*a*brightness*fade; // coloring based on distance\n      fade*=distfading; // distance fading\n      s+=stepsize;\n    }\n    v=mix(vec3(length(v)),v,saturation); //color adjust\n    gl_FragColor = vec4(v*.01,1.);\n    \n    float depth = gl_FragCoord.z / gl_FragCoord.w;\n    const float LOG2 = 1.442695;    \n    float fogFactor = exp2( - fogDensity * fogDensity * depth * depth * LOG2 );\n    fogFactor = 1.0 - clamp( fogFactor, 0.0, 1.0 );\n    gl_FragColor = mix( gl_FragColor, vec4( fogColor, gl_FragColor.w ), fogFactor );\n  }\n";
+	//# sourceMappingURL=shaders.js.map
 
 /***/ },
 /* 67 */
@@ -49973,6 +49963,64 @@
 	 * @author alteredq / http://alteredqualia.com/
 	 */
 	
+	THREE.RenderPass = function ( scene, camera, overrideMaterial, clearColor, clearAlpha ) {
+	
+		this.scene = scene;
+		this.camera = camera;
+	
+		this.overrideMaterial = overrideMaterial;
+	
+		this.clearColor = clearColor;
+		this.clearAlpha = ( clearAlpha !== undefined ) ? clearAlpha : 1;
+	
+		this.oldClearColor = new THREE.Color();
+		this.oldClearAlpha = 1;
+	
+		this.enabled = true;
+		this.clear = true;
+		this.needsSwap = false;
+	
+	};
+	
+	THREE.RenderPass.prototype = {
+	
+		render: function ( renderer, writeBuffer, readBuffer, delta ) {
+	
+			this.scene.overrideMaterial = this.overrideMaterial;
+	
+			if ( this.clearColor ) {
+	
+				this.oldClearColor.copy( renderer.getClearColor() );
+				this.oldClearAlpha = renderer.getClearAlpha();
+	
+				renderer.setClearColor( this.clearColor, this.clearAlpha );
+	
+			}
+	
+			renderer.render( this.scene, this.camera, readBuffer, this.clear );
+	
+			if ( this.clearColor ) {
+	
+				renderer.setClearColor( this.oldClearColor, this.oldClearAlpha );
+	
+			}
+	
+			this.scene.overrideMaterial = null;
+	
+		}
+	
+	};
+	
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(64)))
+
+/***/ },
+/* 71 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/* WEBPACK VAR INJECTION */(function(THREE) {/**
+	 * @author alteredq / http://alteredqualia.com/
+	 */
+	
 	THREE.MaskPass = function ( scene, camera ) {
 	
 		this.scene = scene;
@@ -50059,7 +50107,7 @@
 	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(64)))
 
 /***/ },
-/* 71 */
+/* 72 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(THREE) {/**
@@ -50125,7 +50173,7 @@
 	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(64)))
 
 /***/ },
-/* 72 */
+/* 73 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(THREE) {/**
@@ -50245,7 +50293,7 @@
 	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(64)))
 
 /***/ },
-/* 73 */
+/* 74 */
 /***/ function(module, exports) {
 
 	var Controls = (function () {
@@ -50311,7 +50359,7 @@
 	//# sourceMappingURL=controls.js.map
 
 /***/ },
-/* 74 */
+/* 75 */
 /***/ function(module, exports) {
 
 	//algorithm http://www.neocomputer.org/projects/eller.html
