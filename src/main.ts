@@ -56,6 +56,7 @@ class World{
   msg: string[];
   msgDisplay: HTMLElement;
   timer: number;
+  fin: boolean;
 
   constructor(){
     this.msg = ["Reality"," doesn’t"," exist"," until"," you"," look"," at&nbsp;it"];
@@ -74,27 +75,36 @@ class World{
     this.addTarget(this.getRandomPosition());
     this.mainLoop();
 
+    this.fin = false;
+
     this.timer = 0;
     
     this.display.animator.play({
       func: _=> {
         this.display.moreDust();
-        this.timer ++;
+        if (++this.timer >= 20)
+          this.display.animator.stop(this.display.dustMaterial);
       },
       duration: 10000,
       loop: true,
-      timer: true
+      timer: true,
+      object: this.display.dustMaterial
     });
+
+    //setTimeout(()=>this.display.playFinal(()=>{this.fin = true}, this.me.angle), 5000);
   }
   
   mainLoop(ts = null) {
     let dt = this.prevLoopTS ? ts - this.prevLoopTS : 1000/60;
     if (dt>100) dt = 100;
 
-    this.phys.world.step(dt/1000);
-    this.me.move(dt);
-    this.worldObjects.forEach(g=>g.up(this.display));
-    this.display.moveCamera(this.me.angle);
+    if (!this.fin){
+      this.phys.world.step(dt/1000);
+      this.me.move(dt);
+      this.worldObjects.forEach(g=>g.up(this.display));
+      this.display.moveCamera(this.me.angle, this.me.keyb.up>0);
+    }
+
     this.display.render(dt);
 
     this.prevLoopTS = ts;
@@ -150,11 +160,16 @@ class World{
 
         this.display.glitchMe(100).then(() => {
           let {animation, view } = this.display.createGalaxy(pos);
-          animation.then(() => {
+          return animation.then(() => {
             let body = this.phys.createGalaxy(physPos);
             this.worldObjects.push(new WorldObject(view, body));
           });
-        }).then(()=>this.addTarget(this.getRandomPosition()));
+        }).then(()=> {
+          if (this.hitCounter<this.msg.length)
+            this.addTarget(this.getRandomPosition());
+          else
+            this.display.playFinal(()=>{this.fin = true}, this.me.angle);
+        });
     }});
   }
 }

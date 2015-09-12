@@ -52,8 +52,8 @@
 	};
 	var physics_1 = __webpack_require__(1);
 	var display_1 = __webpack_require__(63);
-	var controls_1 = __webpack_require__(74);
-	var ellermaze_1 = __webpack_require__(75);
+	var controls_1 = __webpack_require__(76);
+	var ellermaze_1 = __webpack_require__(77);
 	function fullscreen(el) {
 	    if (el.requestFullscreen) {
 	        el.requestFullscreen();
@@ -111,15 +111,18 @@
 	        this.buildWallsAndFloor();
 	        this.addTarget(this.getRandomPosition());
 	        this.mainLoop();
+	        this.fin = false;
 	        this.timer = 0;
 	        this.display.animator.play({
 	            func: function (_) {
 	                _this.display.moreDust();
-	                _this.timer++;
+	                if (++_this.timer >= 20)
+	                    _this.display.animator.stop(_this.display.dustMaterial);
 	            },
 	            duration: 10000,
 	            loop: true,
-	            timer: true
+	            timer: true,
+	            object: this.display.dustMaterial
 	        });
 	    }
 	    World.prototype.mainLoop = function (ts) {
@@ -128,10 +131,12 @@
 	        var dt = this.prevLoopTS ? ts - this.prevLoopTS : 1000 / 60;
 	        if (dt > 100)
 	            dt = 100;
-	        this.phys.world.step(dt / 1000);
-	        this.me.move(dt);
-	        this.worldObjects.forEach(function (g) { return g.up(_this.display); });
-	        this.display.moveCamera(this.me.angle);
+	        if (!this.fin) {
+	            this.phys.world.step(dt / 1000);
+	            this.me.move(dt);
+	            this.worldObjects.forEach(function (g) { return g.up(_this.display); });
+	            this.display.moveCamera(this.me.angle, this.me.keyb.up > 0);
+	        }
 	        this.display.render(dt);
 	        this.prevLoopTS = ts;
 	        requestAnimationFrame(function (ts) { return _this.mainLoop(ts); });
@@ -180,11 +185,16 @@
 	                    _this.msgDisplay.innerHTML += _this.msg[_this.hitCounter++];
 	                _this.display.glitchMe(100).then(function () {
 	                    var _a = _this.display.createGalaxy(pos), animation = _a.animation, view = _a.view;
-	                    animation.then(function () {
+	                    return animation.then(function () {
 	                        var body = _this.phys.createGalaxy(physPos);
 	                        _this.worldObjects.push(new WorldObject(view, body));
 	                    });
-	                }).then(function () { return _this.addTarget(_this.getRandomPosition()); });
+	                }).then(function () {
+	                    if (_this.hitCounter < _this.msg.length)
+	                        _this.addTarget(_this.getRandomPosition());
+	                    else
+	                        _this.display.playFinal(function () { _this.fin = true; }, _this.me.angle);
+	                });
 	            } });
 	    };
 	    return World;
@@ -14122,23 +14132,25 @@
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(THREE) {//THREE imported globally in webpack.config.js:25
-	var animator_1 = __webpack_require__(65);
-	var shaders_1 = __webpack_require__(66);
-	__webpack_require__(67);
-	__webpack_require__(68);
-	__webpack_require__(69);
+	var animator_1 = __webpack_require__(66);
+	var end_1 = __webpack_require__(67);
+	var shaders_1 = __webpack_require__(69);
 	__webpack_require__(70);
 	__webpack_require__(71);
+	__webpack_require__(65);
 	__webpack_require__(72);
 	__webpack_require__(73);
+	__webpack_require__(74);
+	__webpack_require__(75);
 	var Display3D = (function () {
 	    function Display3D() {
 	        var _this = this;
 	        this.resolution = new THREE.Vector2(window.innerWidth, window.innerHeight);
 	        this.scene = new THREE.Scene();
+	        this.cameraRadius = 10;
 	        this.camera = new THREE.PerspectiveCamera(75, this.resolution.x / this.resolution.y, 1, 1000);
 	        this.camera.position.y = Display3D.scale * 2.5;
-	        this.renderer = new THREE.WebGLRenderer();
+	        this.renderer = new THREE.WebGLRenderer({ precision: "lowp" });
 	        this.renderer.setPixelRatio(window.devicePixelRatio);
 	        this.renderer.setSize(this.resolution.x, this.resolution.y);
 	        this.renderer.setClearColor(0xffffff);
@@ -14152,21 +14164,15 @@
 	        }, false);
 	        this.mazeHolder = new THREE.Object3D();
 	        this.scene.add(this.mazeHolder);
+	        this.scene.add(new THREE.AmbientLight(0x999999));
 	        this.animator = new animator_1.Animator();
 	        this.glitch = false;
 	        this.initSpaceMaterial();
 	        this.initPlayer();
-	        this.initLight();
 	        this.initProtoGalaxy();
 	        this.initGlitch();
 	        this.initMorphingSphere();
 	    }
-	    Display3D.prototype.initLight = function () {
-	        this.scene.add(new THREE.AmbientLight(0x999999));
-	        this.light = new THREE.PointLight(0xffffff, .1);
-	        this.light.position.y = Display3D.scale * 10;
-	        this.scene.add(this.light);
-	    };
 	    Display3D.prototype.initShadowLight = function () {
 	        this.renderer.shadowMapEnabled = true;
 	        this.renderer.shadowMapType = THREE.PCFShadowMap;
@@ -14195,20 +14201,31 @@
 	    };
 	    Display3D.prototype.initPlayer = function () {
 	        var _this = this;
-	        var playerWire = new THREE.Mesh(new THREE.OctahedronGeometry(Display3D.scale / 3, 0), new THREE.MeshBasicMaterial({ color: 0, wireframe: true }));
 	        var playerSphere = new THREE.Mesh(new THREE.SphereGeometry(Display3D.scale / 8, 16, 16), this.spaceMaterial);
 	        this.player = new THREE.Object3D();
-	        this.player.add(playerSphere);
-	        this.player.add(playerWire);
 	        this.player.position.y = 0;
-	        this.mazeHolder.add(this.player);
-	        this.animator.play({
-	            func: function (dt) {
-	                _this.player.position.y = Math.sin(dt * Math.PI * 2) * Display3D.scale / 16;
-	                playerWire.rotation.z = dt * Math.PI;
-	            },
-	            duration: 2500,
-	            loop: true });
+	        this.player.add(playerSphere);
+	        this.scene.add(this.player);
+	        this.finalHead = new end_1.HeadObject();
+	        this.finalHead.load().then(function () {
+	            _this.finalHead.lowpoly(6);
+	            _this.finalHead.colorize();
+	            var meshGeometry = new THREE.OctahedronGeometry(2.33, 0);
+	            meshGeometry.morphTargets.push({ name: "head", vertices: _this.finalHead.getMorphTargets(meshGeometry.vertices.length) });
+	            _this.playerWire = new THREE.Mesh(meshGeometry, new THREE.MeshBasicMaterial({ color: 0, wireframe: true, morphTargets: true }));
+	            _this.playerWire.scale.set(Display3D.scale / 7, Display3D.scale / 7, Display3D.scale / 7);
+	            _this.player.add(_this.playerWire);
+	            _this.finalHead.mesh.scale.set(Display3D.scale / 7, Display3D.scale / 7, Display3D.scale / 7);
+	            _this.animator.play({
+	                func: function (dt) {
+	                    _this.player.position.y = Math.sin(dt * Math.PI * 2) * Display3D.scale / 16;
+	                    _this.playerWire.rotation.z = dt * Math.PI;
+	                },
+	                duration: 2500,
+	                loop: true,
+	                object: _this.player
+	            });
+	        });
 	    };
 	    Display3D.prototype.addEnvironment = function (w, h) {
 	        var plane = new THREE.Mesh(new THREE.PlaneBufferGeometry(w * Display3D.scale, h * Display3D.scale), new THREE.MeshLambertMaterial({ color: 0xffffff, side: THREE.DoubleSide }));
@@ -14217,8 +14234,6 @@
 	        plane.position.z = h * Display3D.scale / 2 - Display3D.scale / 2;
 	        plane.position.y = -Display3D.scale / 2;
 	        this.mazeHolder.add(plane);
-	        this.light.position.x = w * Display3D.scale / 2;
-	        this.light.position.z = h * Display3D.scale / 2;
 	        this.initDust(w, h);
 	    };
 	    Display3D.prototype.addWall = function (x, y) {
@@ -14234,11 +14249,32 @@
 	        displayObj.position.z = physObj.position[1] * Display3D.scale;
 	        displayObj.rotation.y = -physObj.angle;
 	    };
-	    Display3D.prototype.moveCamera = function (q) {
-	        this.camera.position.x = this.player.position.x - Math.cos(q) * Display3D.scale * 2;
-	        this.camera.position.z = this.player.position.z - Math.sin(q) * Display3D.scale * 2;
-	        this.camera.position.y = Display3D.scale * 2.5;
+	    Display3D.prototype.moveCamera = function (q, up) {
+	        if (up && this.cameraRadius < 3)
+	            this.cameraRadius += .0025;
+	        if (!up && this.cameraRadius > 2)
+	            this.cameraRadius -= .01;
+	        if (this.cameraRadius > 3.01)
+	            this.cameraRadius -= .05;
+	        this.camera.position.x = this.player.position.x - Math.cos(q) * Display3D.scale * this.cameraRadius;
+	        this.camera.position.z = this.player.position.z - Math.sin(q) * Display3D.scale * this.cameraRadius;
+	        this.camera.position.y = Display3D.scale * (this.cameraRadius + .5);
 	        this.camera.lookAt(new THREE.Vector3(this.player.position.x, Display3D.scale * 1.25, this.player.position.z));
+	    };
+	    Display3D.prototype.finalCameraMove = function (t, q) {
+	        var _this = this;
+	        var y = Display3D.scale * (this.cameraRadius + .5);
+	        var y2 = Display3D.scale * 1.25;
+	        return this.animator.play({
+	            func: function (dt) {
+	                _this.cameraRadius = dt + 2;
+	                _this.camera.position.x = _this.player.position.x - Math.cos(q * (1 - dt)) * Display3D.scale * _this.cameraRadius;
+	                _this.camera.position.z = _this.player.position.z - Math.sin(q * (1 - dt)) * Display3D.scale * _this.cameraRadius;
+	                _this.camera.position.y = y * (1 - dt);
+	                _this.camera.lookAt(new THREE.Vector3(_this.player.position.x, y2 * (1 - dt), _this.player.position.z));
+	            },
+	            duration: t
+	        });
 	    };
 	    Display3D.prototype.initProtoGalaxy = function () {
 	        this.protoGalaxy = new THREE.Mesh(new THREE.SphereGeometry(Display3D.scale / 1.25, 16, 16), this.spaceMaterial);
@@ -14301,10 +14337,10 @@
 	    };
 	    Display3D.prototype.initDust = function (w, h) {
 	        this.dustGeometry = new THREE.Geometry();
-	        for (var i = 0; i < w * h / 5; i++)
+	        for (var i = 0; i < w * h; i++)
 	            this.dustGeometry.vertices.push(new THREE.Vector3(Math.random() * (w + 6) * Display3D.scale - Display3D.scale * 3, Math.random() * 6 * Display3D.scale - Display3D.scale * 3, Math.random() * (h + 6) * Display3D.scale - Display3D.scale * 3));
 	        this.dustMaterial = new THREE.PointCloudMaterial({
-	            size: 3, color: 0, fog: true });
+	            size: 1, color: 0xaaaaaa, fog: true });
 	        this.moreDust();
 	    };
 	    Display3D.prototype.moreDust = function () {
@@ -14422,6 +14458,84 @@
 	            loop: true
 	        });
 	        return s;
+	    };
+	    Display3D.prototype.playFinal = function (blockGameplay, cameraq) {
+	        var _this = this;
+	        this.animator.play({ duration: 3000 })
+	            .then(function () { return _this.glitchMe(200); })
+	            .then(function () { return _this.animator.play({ duration: 1500 }); })
+	            .then(function () { return _this.glitchMe(200); })
+	            .then(function () { return _this.animator.play({ duration: 1500 }); })
+	            .then(function () { return _this.glitchMe(700); })
+	            .then(function () { return _this.animator.play({ duration: 1500 }); })
+	            .then(blockGameplay)
+	            .then(function () { return _this.glitchMe(700); })
+	            .then(function () { return _this.scene.remove(_this.mazeHolder); })
+	            .then(function () { return _this.animator.play({ duration: 1000 }); })
+	            .then(function () {
+	            _this.animator.stop(_this.player);
+	            var currotz = _this.playerWire.rotation.z;
+	            _this.animator.play({
+	                func: function (dt) { return _this.playerWire.rotation.z = currotz * (1 - dt); }
+	            });
+	            var rotateme = function () {
+	                var startq = _this.player.rotation.y;
+	                var duration = Math.random();
+	                duration = Math.pow(duration, 2) * 1500;
+	                _this.animator.play({
+	                    func: function (dt) { return _this.player.rotation.y = startq + dt / 5; },
+	                    duration: duration
+	                }).then(function () { return rotateme(); });
+	            };
+	            rotateme();
+	            _this.finalCameraMove(5000, cameraq);
+	            return _this.animator.play({
+	                func: function (dt) {
+	                    _this.playerWire.morphTargetInfluences[0] = dt;
+	                    _this.playerWire.position.y = -dt * Display3D.scale * .33;
+	                    _this.player.position.y = dt * Display3D.scale * .7;
+	                    var d = dt * 3.3 + 1;
+	                    _this.player.scale.set(d, d, d);
+	                },
+	                duration: 5000
+	            });
+	        })
+	            .then(function () {
+	            _this.finalHead.mesh.position.y = -Display3D.scale * .33;
+	            _this.player.remove(_this.playerWire);
+	            _this.player.add(_this.finalHead.mesh);
+	            return _this.animator.play({
+	                func: function (d) { return _this.finalHead.lowpoly(d * d * 994 + 6); },
+	                duration: 20000 });
+	        }).then(function (_) {
+	            var light = new THREE.PointLight(0xffffff, .25);
+	            light.position.set(_this.camera.position.x, _this.camera.position.y, _this.camera.position.z);
+	            _this.scene.add(light);
+	            _this.finalHead.mesh.material = _this.finalHead.materialSolid;
+	            _this.glitchMe(70);
+	            _this.animator.play({
+	                func: function (_) {
+	                    if (Math.random() > .93) {
+	                        _this.finalHead.lowpoly(Math.pow(Math.random(), 2) * 994 + 6);
+	                        _this.glitchMe(200);
+	                    }
+	                },
+	                duration: 1000, timer: true, loop: true });
+	            _this.animator.play({
+	                func: function (_) {
+	                    var rnd = Math.random();
+	                    var curmat = _this.finalHead.mesh.material;
+	                    if (rnd < .075)
+	                        _this.finalHead.mesh.material = _this.finalHead.materialSolid;
+	                    else if (rnd > .075 && rnd < .15)
+	                        _this.finalHead.mesh.material = _this.finalHead.materialWire;
+	                    else if (rnd > .15 && rnd < .225)
+	                        _this.finalHead.mesh.material = _this.spaceMaterial;
+	                    if (curmat != _this.finalHead.mesh.material)
+	                        _this.glitchMe(70);
+	                },
+	                duration: 1000, timer: true, loop: true });
+	        });
 	    };
 	    Display3D.prototype.render = function (dt) {
 	        this.spaceMaterial.uniforms.iGlobalTime.value += dt / 1000;
@@ -49592,225 +49706,6 @@
 
 /***/ },
 /* 65 */
-/***/ function(module, exports) {
-
-	var Animator = (function () {
-	    function Animator() {
-	        this.animation = [];
-	    }
-	    Animator.prototype.play = function (_a) {
-	        var _b = _a.func, func = _b === void 0 ? function (dt) { return null; } : _b, _c = _a.duration, duration = _c === void 0 ? 1000 : _c, _d = _a.object, object = _d === void 0 ? null : _d, _e = _a.loop, loop = _e === void 0 ? false : _e, _f = _a.timer, timer = _f === void 0 ? false : _f;
-	        var animation = this.animation;
-	        return new Promise(function (resolve, reject) {
-	            if (object && animation.filter(function (o) { return o.object == object; }).length)
-	                return reject("object already in use");
-	            animation.push({ start: Date.now(), func: func, duration: duration, resolve: resolve, object: object, loop: loop, timer: timer });
-	        }).catch(function (error) { return null; });
-	    };
-	    Animator.prototype.stop = function (object) {
-	        var i = this.animation.map(function (o) { return o.object; }).indexOf(object);
-	        if (i >= 0)
-	            this.animation.splice(i, 1);
-	    };
-	    Animator.prototype.step = function () {
-	        for (var i = 0, len = this.animation.length; i < len; i++) {
-	            var dt = Date.now() - this.animation[i].start;
-	            if (dt <= this.animation[i].duration) {
-	                if (!this.animation[i].timer)
-	                    this.animation[i].func(dt / this.animation[i].duration);
-	            }
-	            else if (this.animation[i].loop) {
-	                if (this.animation[i].timer)
-	                    this.animation[i].func(1);
-	                this.animation[i].start = Date.now();
-	            }
-	            else {
-	                this.animation[i].func(1);
-	                this.animation[i].resolve();
-	                this.animation.splice(i, 1);
-	                i--;
-	                len--;
-	            }
-	        }
-	    };
-	    return Animator;
-	})();
-	exports.Animator = Animator;
-	//# sourceMappingURL=animator.js.map
-
-/***/ },
-/* 66 */
-/***/ function(module, exports) {
-
-	exports.spaceVertexShader = "\n  varying vec2 vUV;\n  void main(void){\n    gl_Position = projectionMatrix *modelViewMatrix  * vec4(position,1.0);\n    vUV = gl_Position.xy / gl_Position.w;\n  }\n";
-	exports.spaceFragmentShader = "\n  // Star Nest by Pablo Rom\u00E1n Andrioli\n\n  // This content is under the MIT License.\n\n  #define iterations 17\n  #define formuparam 0.53\n\n  #define volsteps 5\n  #define stepsize 0.33\n\n  #define zoom   0.800\n  #define tile   0.850\n  #define speed  0.004 \n\n  #define brightness 0.0015\n  #define darkmatter 0.300\n  #define distfading 0.730\n  #define saturation 0.850\n\n  varying vec2 vUV;\n  uniform float iGlobalTime;\n  uniform vec2 iResolution;\n  uniform float fogDensity;\n  uniform vec3 fogColor;\n\n  void main(void)\n  {\n    vec2 uv=vUV;//fragCoord.xy/iResolution.xy-.5;\n    uv.y*=iResolution.y/iResolution.x;\n    vec3 dir=vec3(uv*zoom,1.);\n    float time=iGlobalTime*speed+.25;\n\n    //mouse rotation\n    float a1=.5+.1;\n    float a2=.8+.1;\n    mat2 rot1=mat2(cos(a1),sin(a1),-sin(a1),cos(a1));\n    mat2 rot2=mat2(cos(a2),sin(a2),-sin(a2),cos(a2));\n    dir.xz*=rot1;\n    dir.xy*=rot2;\n    vec3 from=vec3(1.,.5,0.5);\n    from+=vec3(time*2.,time,-2.);\n    from.xz*=rot1;\n    from.xy*=rot2;\n    \n    //volumetric rendering\n    float s=0.1,fade=1.;\n    vec3 v=vec3(0.);\n    for (int r=0; r<volsteps; r++) {\n      vec3 p=from+s*dir*.5;\n      p = abs(vec3(tile)-mod(p,vec3(tile*2.))); // tiling fold\n      float pa,a=pa=0.;\n      for (int i=0; i<iterations; i++) { \n        p=abs(p)/dot(p,p)-formuparam; // the magic formula\n        a+=abs(length(p)-pa); // absolute sum of average change\n        pa=length(p);\n      }\n      float dm=max(0.,darkmatter-a*a*.001); //dark matter\n      a*=a*a; // add contrast\n      if (r>6) fade*=1.-dm; // dark matter, don't render near\n      //v+=vec3(dm,dm*.5,0.);\n      v+=fade;\n      v+=vec3(s,s*s,s*s*s*s)*a*brightness*fade; // coloring based on distance\n      fade*=distfading; // distance fading\n      s+=stepsize;\n    }\n    v=mix(vec3(length(v)),v,saturation); //color adjust\n    gl_FragColor = vec4(v*.01,1.);\n    \n    float depth = gl_FragCoord.z / gl_FragCoord.w;\n    const float LOG2 = 1.442695;    \n    float fogFactor = exp2( - fogDensity * fogDensity * depth * depth * LOG2 );\n    fogFactor = 1.0 - clamp( fogFactor, 0.0, 1.0 );\n    gl_FragColor = mix( gl_FragColor, vec4( fogColor, gl_FragColor.w ), fogFactor );\n  }\n";
-	//# sourceMappingURL=shaders.js.map
-
-/***/ },
-/* 67 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/* WEBPACK VAR INJECTION */(function(THREE) {/**
-	 * @author alteredq / http://alteredqualia.com/
-	 *
-	 * Full-screen textured quad shader
-	 */
-	
-	THREE.CopyShader = {
-	
-		uniforms: {
-	
-			"tDiffuse": { type: "t", value: null },
-			"opacity":  { type: "f", value: 1.0 }
-	
-		},
-	
-		vertexShader: [
-	
-			"varying vec2 vUv;",
-	
-			"void main() {",
-	
-				"vUv = uv;",
-				"gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
-	
-			"}"
-	
-		].join("\n"),
-	
-		fragmentShader: [
-	
-			"uniform float opacity;",
-	
-			"uniform sampler2D tDiffuse;",
-	
-			"varying vec2 vUv;",
-	
-			"void main() {",
-	
-				"vec4 texel = texture2D( tDiffuse, vUv );",
-				"gl_FragColor = opacity * texel;",
-	
-			"}"
-	
-		].join("\n")
-	
-	};
-	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(64)))
-
-/***/ },
-/* 68 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/* WEBPACK VAR INJECTION */(function(THREE) {/**
-	 * @author felixturner / http://airtight.cc/
-	 *
-	 * RGB Shift Shader
-	 * Shifts red and blue channels from center in opposite directions
-	 * Ported from http://kriss.cx/tom/2009/05/rgb-shift/
-	 * by Tom Butterworth / http://kriss.cx/tom/
-	 *
-	 * amount: shift distance (1 is width of input)
-	 * angle: shift angle in radians
-	 */
-	
-	THREE.DigitalGlitch = {
-	
-		uniforms: {
-	
-			"tDiffuse":		{ type: "t", value: null },//diffuse texture
-			"tDisp":		{ type: "t", value: null },//displacement texture for digital glitch squares
-			"byp":			{ type: "i", value: 0 },//apply the glitch ?
-			"amount":		{ type: "f", value: 0.08 },
-			"angle":		{ type: "f", value: 0.02 },
-			"seed":			{ type: "f", value: 0.02 },
-			"seed_x":		{ type: "f", value: 0.02 },//-1,1
-			"seed_y":		{ type: "f", value: 0.02 },//-1,1
-			"distortion_x":	{ type: "f", value: 0.5 },
-			"distortion_y":	{ type: "f", value: 0.6 },
-			"col_s":		{ type: "f", value: 0.05 }
-		},
-	
-		vertexShader: [
-	
-			"varying vec2 vUv;",
-			"void main() {",
-				"vUv = uv;",
-				"gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
-			"}"
-		].join("\n"),
-	
-		fragmentShader: [
-			"uniform int byp;",//should we apply the glitch ?
-			
-			"uniform sampler2D tDiffuse;",
-			"uniform sampler2D tDisp;",
-			
-			"uniform float amount;",
-			"uniform float angle;",
-			"uniform float seed;",
-			"uniform float seed_x;",
-			"uniform float seed_y;",
-			"uniform float distortion_x;",
-			"uniform float distortion_y;",
-			"uniform float col_s;",
-				
-			"varying vec2 vUv;",
-			
-			
-			"float rand(vec2 co){",
-				"return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);",
-			"}",
-					
-			"void main() {",
-				"if(byp<1) {",
-					"vec2 p = vUv;",
-					"float xs = floor(gl_FragCoord.x / 0.5);",
-					"float ys = floor(gl_FragCoord.y / 0.5);",
-					//based on staffantans glitch shader for unity https://github.com/staffantan/unityglitch
-					"vec4 normal = texture2D (tDisp, p*seed*seed);",
-					"if(p.y<distortion_x+col_s && p.y>distortion_x-col_s*seed) {",
-						"if(seed_x>0.){",
-							"p.y = 1. - (p.y + distortion_y);",
-						"}",
-						"else {",
-							"p.y = distortion_y;",
-						"}",
-					"}",
-					"if(p.x<distortion_y+col_s && p.x>distortion_y-col_s*seed) {",
-						"if(seed_y>0.){",
-							"p.x=distortion_x;",
-						"}",
-						"else {",
-							"p.x = 1. - (p.x + distortion_x);",
-						"}",
-					"}",
-					"p.x+=normal.x*seed_x*(seed/5.);",
-					"p.y+=normal.y*seed_y*(seed/5.);",
-					//base from RGB shift shader
-					"vec2 offset = amount * vec2( cos(angle), sin(angle));",
-					"vec4 cr = texture2D(tDiffuse, p + offset);",
-					"vec4 cga = texture2D(tDiffuse, p);",
-					"vec4 cb = texture2D(tDiffuse, p - offset);",
-					"gl_FragColor = vec4(cr.r, cga.g, cb.b, cga.a);",
-					//add noise
-					"vec4 snow = 200.*amount*vec4(rand(vec2(xs * seed,ys * seed*50.))*0.2);",
-					"gl_FragColor = gl_FragColor+ snow;",
-				"}",
-				"else {",
-					"gl_FragColor=texture2D (tDiffuse, vUv);",
-				"}",
-			"}"
-	
-		].join("\n")
-	
-	};
-	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(64)))
-
-/***/ },
-/* 69 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(THREE) {/**
@@ -49956,7 +49851,637 @@
 	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(64)))
 
 /***/ },
+/* 66 */
+/***/ function(module, exports) {
+
+	var Animator = (function () {
+	    function Animator() {
+	        this.animation = [];
+	    }
+	    Animator.prototype.play = function (_a) {
+	        var _b = _a.func, func = _b === void 0 ? function (dt) { return null; } : _b, _c = _a.duration, duration = _c === void 0 ? 1000 : _c, _d = _a.object, object = _d === void 0 ? null : _d, _e = _a.loop, loop = _e === void 0 ? false : _e, _f = _a.timer, timer = _f === void 0 ? false : _f;
+	        var animation = this.animation;
+	        return new Promise(function (resolve, reject) {
+	            if (object && animation.filter(function (o) { return o.object == object; }).length)
+	                return reject("object already in use");
+	            animation.push({ start: Date.now(), func: func, duration: duration, resolve: resolve, object: object, loop: loop, timer: timer });
+	        }).catch(function (error) { return null; });
+	    };
+	    Animator.prototype.stop = function (object) {
+	        var i = this.animation.map(function (o) { return o.object; }).indexOf(object);
+	        if (i >= 0)
+	            this.animation.splice(i, 1);
+	    };
+	    Animator.prototype.step = function () {
+	        for (var i = 0, len = this.animation.length; i < len; i++) {
+	            var dt = Date.now() - this.animation[i].start;
+	            if (dt <= this.animation[i].duration) {
+	                if (!this.animation[i].timer)
+	                    this.animation[i].func(dt / this.animation[i].duration);
+	            }
+	            else if (this.animation[i].loop) {
+	                if (this.animation[i].timer)
+	                    this.animation[i].func(1);
+	                this.animation[i].start = Date.now();
+	            }
+	            else {
+	                this.animation[i].func(1);
+	                this.animation[i].resolve();
+	                this.animation.splice(i, 1);
+	                i--;
+	                len--;
+	            }
+	        }
+	    };
+	    return Animator;
+	})();
+	exports.Animator = Animator;
+	//# sourceMappingURL=animator.js.map
+
+/***/ },
+/* 67 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/* WEBPACK VAR INJECTION */(function(THREE) {__webpack_require__(68);
+	var HeadObject = (function () {
+	    function HeadObject() {
+	        this.materialWire = new THREE.MeshBasicMaterial({
+	            wireframe: true,
+	            color: 0,
+	            fog: true
+	        });
+	        this.materialSolid = new THREE.MeshLambertMaterial({
+	            shading: THREE.FlatShading,
+	            vertexColors: THREE.FaceColors,
+	            fog: true
+	        });
+	    }
+	    HeadObject.prototype.colorize = function () {
+	        var len = this.geometry.faces.length;
+	        for (var i = 0; i < len; i++)
+	            this.geometry.faces[i].color.setHSL(0, 0, Math.random() / 5 + .8);
+	        this.geometry.colorsNeedUpdate = true;
+	    };
+	    HeadObject.prototype.blink = function (n, dt) {
+	        var len = this.geometry.faces.length;
+	        for (var i = 0; i < len; i++)
+	            if (i >= (n - dt / 2) * len && i <= (n + dt / 2) * len)
+	                this.geometry.faces[i].color.setHSL(Math.random(), .5, .5);
+	            else
+	                this.geometry.faces[i].color.setHSL(1, 1, 1);
+	        this.geometry.colorsNeedUpdate = true;
+	    };
+	    HeadObject.prototype.load = function () {
+	        var _this = this;
+	        var loader = new THREE.JSONLoader(true);
+	        return Promise.all([
+	            window.fetch('media/lowpolymap.txt').then(function (d) { return d.text(); }).then(function (d) { return _this.reduceMap = d.split(",").map(function (x) { return parseInt(x); }); }),
+	            new Promise(function (resolve, reject) {
+	                loader.load('media/lowpolyhead.js', function (geometry) {
+	                    _this.geometry = geometry;
+	                    _this.origGeometry = geometry.clone();
+	                    _this.mesh = new THREE.Mesh(_this.geometry, _this.materialWire);
+	                    resolve();
+	                });
+	            })
+	        ]);
+	    };
+	    HeadObject.prototype.lowpoly = function (t) {
+	        var face, oldFace;
+	        for (var i = 0; i < this.geometry.faces.length; i++) {
+	            face = this.geometry.faces[i];
+	            oldFace = this.origGeometry.faces[i];
+	            face.a = oldFace.a;
+	            face.b = oldFace.b;
+	            face.c = oldFace.c;
+	            while (face.a > t)
+	                face.a = this.reduceMap[face.a];
+	            while (face.b > t)
+	                face.b = this.reduceMap[face.b];
+	            while (face.c > t)
+	                face.c = this.reduceMap[face.c];
+	        }
+	        this.geometry.verticesNeedUpdate = true;
+	        this.geometry.elementsNeedUpdate = true;
+	    };
+	    HeadObject.prototype.getMorphTargets = function (n) {
+	        return this.origGeometry.vertices.slice(0, n);
+	    };
+	    return HeadObject;
+	})();
+	exports.HeadObject = HeadObject;
+	//# sourceMappingURL=end.js.map
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(64)))
+
+/***/ },
+/* 68 */
+/***/ function(module, exports) {
+
+	(function() {
+	  'use strict';
+	
+	  if (self.fetch) {
+	    return
+	  }
+	
+	  function normalizeName(name) {
+	    if (typeof name !== 'string') {
+	      name = name.toString();
+	    }
+	    if (/[^a-z0-9\-#$%&'*+.\^_`|~]/i.test(name)) {
+	      throw new TypeError('Invalid character in header field name')
+	    }
+	    return name.toLowerCase()
+	  }
+	
+	  function normalizeValue(value) {
+	    if (typeof value !== 'string') {
+	      value = value.toString();
+	    }
+	    return value
+	  }
+	
+	  function Headers(headers) {
+	    this.map = {}
+	
+	    if (headers instanceof Headers) {
+	      headers.forEach(function(value, name) {
+	        this.append(name, value)
+	      }, this)
+	
+	    } else if (headers) {
+	      Object.getOwnPropertyNames(headers).forEach(function(name) {
+	        this.append(name, headers[name])
+	      }, this)
+	    }
+	  }
+	
+	  Headers.prototype.append = function(name, value) {
+	    name = normalizeName(name)
+	    value = normalizeValue(value)
+	    var list = this.map[name]
+	    if (!list) {
+	      list = []
+	      this.map[name] = list
+	    }
+	    list.push(value)
+	  }
+	
+	  Headers.prototype['delete'] = function(name) {
+	    delete this.map[normalizeName(name)]
+	  }
+	
+	  Headers.prototype.get = function(name) {
+	    var values = this.map[normalizeName(name)]
+	    return values ? values[0] : null
+	  }
+	
+	  Headers.prototype.getAll = function(name) {
+	    return this.map[normalizeName(name)] || []
+	  }
+	
+	  Headers.prototype.has = function(name) {
+	    return this.map.hasOwnProperty(normalizeName(name))
+	  }
+	
+	  Headers.prototype.set = function(name, value) {
+	    this.map[normalizeName(name)] = [normalizeValue(value)]
+	  }
+	
+	  Headers.prototype.forEach = function(callback, thisArg) {
+	    Object.getOwnPropertyNames(this.map).forEach(function(name) {
+	      this.map[name].forEach(function(value) {
+	        callback.call(thisArg, value, name, this)
+	      }, this)
+	    }, this)
+	  }
+	
+	  function consumed(body) {
+	    if (body.bodyUsed) {
+	      return Promise.reject(new TypeError('Already read'))
+	    }
+	    body.bodyUsed = true
+	  }
+	
+	  function fileReaderReady(reader) {
+	    return new Promise(function(resolve, reject) {
+	      reader.onload = function() {
+	        resolve(reader.result)
+	      }
+	      reader.onerror = function() {
+	        reject(reader.error)
+	      }
+	    })
+	  }
+	
+	  function readBlobAsArrayBuffer(blob) {
+	    var reader = new FileReader()
+	    reader.readAsArrayBuffer(blob)
+	    return fileReaderReady(reader)
+	  }
+	
+	  function readBlobAsText(blob) {
+	    var reader = new FileReader()
+	    reader.readAsText(blob)
+	    return fileReaderReady(reader)
+	  }
+	
+	  var support = {
+	    blob: 'FileReader' in self && 'Blob' in self && (function() {
+	      try {
+	        new Blob();
+	        return true
+	      } catch(e) {
+	        return false
+	      }
+	    })(),
+	    formData: 'FormData' in self
+	  }
+	
+	  function Body() {
+	    this.bodyUsed = false
+	
+	
+	    this._initBody = function(body) {
+	      this._bodyInit = body
+	      if (typeof body === 'string') {
+	        this._bodyText = body
+	      } else if (support.blob && Blob.prototype.isPrototypeOf(body)) {
+	        this._bodyBlob = body
+	      } else if (support.formData && FormData.prototype.isPrototypeOf(body)) {
+	        this._bodyFormData = body
+	      } else if (!body) {
+	        this._bodyText = ''
+	      } else {
+	        throw new Error('unsupported BodyInit type')
+	      }
+	    }
+	
+	    if (support.blob) {
+	      this.blob = function() {
+	        var rejected = consumed(this)
+	        if (rejected) {
+	          return rejected
+	        }
+	
+	        if (this._bodyBlob) {
+	          return Promise.resolve(this._bodyBlob)
+	        } else if (this._bodyFormData) {
+	          throw new Error('could not read FormData body as blob')
+	        } else {
+	          return Promise.resolve(new Blob([this._bodyText]))
+	        }
+	      }
+	
+	      this.arrayBuffer = function() {
+	        return this.blob().then(readBlobAsArrayBuffer)
+	      }
+	
+	      this.text = function() {
+	        var rejected = consumed(this)
+	        if (rejected) {
+	          return rejected
+	        }
+	
+	        if (this._bodyBlob) {
+	          return readBlobAsText(this._bodyBlob)
+	        } else if (this._bodyFormData) {
+	          throw new Error('could not read FormData body as text')
+	        } else {
+	          return Promise.resolve(this._bodyText)
+	        }
+	      }
+	    } else {
+	      this.text = function() {
+	        var rejected = consumed(this)
+	        return rejected ? rejected : Promise.resolve(this._bodyText)
+	      }
+	    }
+	
+	    if (support.formData) {
+	      this.formData = function() {
+	        return this.text().then(decode)
+	      }
+	    }
+	
+	    this.json = function() {
+	      return this.text().then(JSON.parse)
+	    }
+	
+	    return this
+	  }
+	
+	  // HTTP methods whose capitalization should be normalized
+	  var methods = ['DELETE', 'GET', 'HEAD', 'OPTIONS', 'POST', 'PUT']
+	
+	  function normalizeMethod(method) {
+	    var upcased = method.toUpperCase()
+	    return (methods.indexOf(upcased) > -1) ? upcased : method
+	  }
+	
+	  function Request(url, options) {
+	    options = options || {}
+	    this.url = url
+	
+	    this.credentials = options.credentials || 'omit'
+	    this.headers = new Headers(options.headers)
+	    this.method = normalizeMethod(options.method || 'GET')
+	    this.mode = options.mode || null
+	    this.referrer = null
+	
+	    if ((this.method === 'GET' || this.method === 'HEAD') && options.body) {
+	      throw new TypeError('Body not allowed for GET or HEAD requests')
+	    }
+	    this._initBody(options.body)
+	  }
+	
+	  function decode(body) {
+	    var form = new FormData()
+	    body.trim().split('&').forEach(function(bytes) {
+	      if (bytes) {
+	        var split = bytes.split('=')
+	        var name = split.shift().replace(/\+/g, ' ')
+	        var value = split.join('=').replace(/\+/g, ' ')
+	        form.append(decodeURIComponent(name), decodeURIComponent(value))
+	      }
+	    })
+	    return form
+	  }
+	
+	  function headers(xhr) {
+	    var head = new Headers()
+	    var pairs = xhr.getAllResponseHeaders().trim().split('\n')
+	    pairs.forEach(function(header) {
+	      var split = header.trim().split(':')
+	      var key = split.shift().trim()
+	      var value = split.join(':').trim()
+	      head.append(key, value)
+	    })
+	    return head
+	  }
+	
+	  Body.call(Request.prototype)
+	
+	  function Response(bodyInit, options) {
+	    if (!options) {
+	      options = {}
+	    }
+	
+	    this._initBody(bodyInit)
+	    this.type = 'default'
+	    this.url = null
+	    this.status = options.status
+	    this.ok = this.status >= 200 && this.status < 300
+	    this.statusText = options.statusText
+	    this.headers = options.headers instanceof Headers ? options.headers : new Headers(options.headers)
+	    this.url = options.url || ''
+	  }
+	
+	  Body.call(Response.prototype)
+	
+	  self.Headers = Headers;
+	  self.Request = Request;
+	  self.Response = Response;
+	
+	  self.fetch = function(input, init) {
+	    // TODO: Request constructor should accept input, init
+	    var request
+	    if (Request.prototype.isPrototypeOf(input) && !init) {
+	      request = input
+	    } else {
+	      request = new Request(input, init)
+	    }
+	
+	    return new Promise(function(resolve, reject) {
+	      var xhr = new XMLHttpRequest()
+	
+	      function responseURL() {
+	        if ('responseURL' in xhr) {
+	          return xhr.responseURL
+	        }
+	
+	        // Avoid security warnings on getResponseHeader when not allowed by CORS
+	        if (/^X-Request-URL:/m.test(xhr.getAllResponseHeaders())) {
+	          return xhr.getResponseHeader('X-Request-URL')
+	        }
+	
+	        return;
+	      }
+	
+	      xhr.onload = function() {
+	        var status = (xhr.status === 1223) ? 204 : xhr.status
+	        if (status < 100 || status > 599) {
+	          reject(new TypeError('Network request failed'))
+	          return
+	        }
+	        var options = {
+	          status: status,
+	          statusText: xhr.statusText,
+	          headers: headers(xhr),
+	          url: responseURL()
+	        }
+	        var body = 'response' in xhr ? xhr.response : xhr.responseText;
+	        resolve(new Response(body, options))
+	      }
+	
+	      xhr.onerror = function() {
+	        reject(new TypeError('Network request failed'))
+	      }
+	
+	      xhr.open(request.method, request.url, true)
+	
+	      if (request.credentials === 'include') {
+	        xhr.withCredentials = true
+	      }
+	
+	      if ('responseType' in xhr && support.blob) {
+	        xhr.responseType = 'blob'
+	      }
+	
+	      request.headers.forEach(function(value, name) {
+	        xhr.setRequestHeader(name, value)
+	      })
+	
+	      xhr.send(typeof request._bodyInit === 'undefined' ? null : request._bodyInit)
+	    })
+	  }
+	  self.fetch.polyfill = true
+	})();
+
+
+/***/ },
+/* 69 */
+/***/ function(module, exports) {
+
+	exports.spaceVertexShader = "\n  varying vec2 vUV;\n  void main(void){\n    gl_Position = projectionMatrix *modelViewMatrix  * vec4(position,1.0);\n    vUV = gl_Position.xy / gl_Position.w;\n  }\n";
+	exports.spaceFragmentShader = "\n  // https://www.shadertoy.com/view/XlfGRj\n  // Star Nest by Pablo Rom\u00E1n Andrioli\n  // This content is under the MIT License.\n\n  #define iterations 17\n  #define formuparam 0.53\n\n  #define volsteps 5\n  #define stepsize 0.33\n\n  #define zoom   0.800\n  #define tile   0.850\n  #define speed  0.004 \n\n  #define brightness 0.0015\n  #define darkmatter 0.300\n  #define distfading 0.730\n  #define saturation 0.850\n\n  varying vec2 vUV;\n  uniform float iGlobalTime;\n  uniform vec2 iResolution;\n  uniform float fogDensity;\n  uniform vec3 fogColor;\n\n  void main(void)\n  {\n    vec2 uv=vUV;//fragCoord.xy/iResolution.xy-.5;\n    uv.y*=iResolution.y/iResolution.x;\n    vec3 dir=vec3(uv*zoom,1.);\n    float time=iGlobalTime*speed+.25;\n\n    //mouse rotation\n    float a1=.5+.1;\n    float a2=.8+.2;\n    mat2 rot1=mat2(cos(a1),sin(a1),-sin(a1),cos(a1));\n    mat2 rot2=mat2(cos(a2),sin(a2),-sin(a2),cos(a2));\n    dir.xz*=rot1;\n    dir.xy*=rot2;\n    vec3 from=vec3(1.,.5,0.5);\n    from+=vec3(time*2.,time,-2.);\n    from.xz*=rot1;\n    from.xy*=rot2;\n    \n    //volumetric rendering\n    float s=0.1,fade=1.;\n    vec3 v=vec3(0.);\n    for (int r=0; r<volsteps; r++) {\n      vec3 p=from+s*dir*.5;\n      p = abs(vec3(tile)-mod(p,vec3(tile*2.))); // tiling fold\n      float pa,a=pa=0.;\n      for (int i=0; i<iterations; i++) { \n        p=abs(p)/dot(p,p)-formuparam; // the magic formula\n        a+=abs(length(p)-pa); // absolute sum of average change\n        pa=length(p);\n      }\n      float dm=max(0.,darkmatter-a*a*.001); //dark matter\n      a*=a*a; // add contrast\n      if (r>6) fade*=1.-dm; // dark matter, don't render near\n      //v+=vec3(dm,dm*.5,0.);\n      v+=fade;\n      v+=vec3(s,s*s,s*s*s*s)*a*brightness*fade; // coloring based on distance\n      fade*=distfading; // distance fading\n      s+=stepsize;\n    }\n    v=mix(vec3(length(v)),v,saturation); //color adjust\n    gl_FragColor = vec4(v*.01,1.);\n    \n    float depth = gl_FragCoord.z / gl_FragCoord.w;\n    const float LOG2 = 1.442695;    \n    float fogFactor = exp2( - fogDensity * fogDensity * depth * depth * LOG2 );\n    fogFactor = 1.0 - clamp( fogFactor, 0.0, 1.0 );\n    gl_FragColor = mix( gl_FragColor, vec4( fogColor, gl_FragColor.w ), fogFactor );\n  }\n";
+	//# sourceMappingURL=shaders.js.map
+
+/***/ },
 /* 70 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/* WEBPACK VAR INJECTION */(function(THREE) {/**
+	 * @author alteredq / http://alteredqualia.com/
+	 *
+	 * Full-screen textured quad shader
+	 */
+	
+	THREE.CopyShader = {
+	
+		uniforms: {
+	
+			"tDiffuse": { type: "t", value: null },
+			"opacity":  { type: "f", value: 1.0 }
+	
+		},
+	
+		vertexShader: [
+	
+			"varying vec2 vUv;",
+	
+			"void main() {",
+	
+				"vUv = uv;",
+				"gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
+	
+			"}"
+	
+		].join("\n"),
+	
+		fragmentShader: [
+	
+			"uniform float opacity;",
+	
+			"uniform sampler2D tDiffuse;",
+	
+			"varying vec2 vUv;",
+	
+			"void main() {",
+	
+				"vec4 texel = texture2D( tDiffuse, vUv );",
+				"gl_FragColor = opacity * texel;",
+	
+			"}"
+	
+		].join("\n")
+	
+	};
+	
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(64)))
+
+/***/ },
+/* 71 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/* WEBPACK VAR INJECTION */(function(THREE) {/**
+	 * @author felixturner / http://airtight.cc/
+	 *
+	 * RGB Shift Shader
+	 * Shifts red and blue channels from center in opposite directions
+	 * Ported from http://kriss.cx/tom/2009/05/rgb-shift/
+	 * by Tom Butterworth / http://kriss.cx/tom/
+	 *
+	 * amount: shift distance (1 is width of input)
+	 * angle: shift angle in radians
+	 */
+	
+	THREE.DigitalGlitch = {
+	
+		uniforms: {
+	
+			"tDiffuse":		{ type: "t", value: null },//diffuse texture
+			"tDisp":		{ type: "t", value: null },//displacement texture for digital glitch squares
+			"byp":			{ type: "i", value: 0 },//apply the glitch ?
+			"amount":		{ type: "f", value: 0.08 },
+			"angle":		{ type: "f", value: 0.02 },
+			"seed":			{ type: "f", value: 0.02 },
+			"seed_x":		{ type: "f", value: 0.02 },//-1,1
+			"seed_y":		{ type: "f", value: 0.02 },//-1,1
+			"distortion_x":	{ type: "f", value: 0.5 },
+			"distortion_y":	{ type: "f", value: 0.6 },
+			"col_s":		{ type: "f", value: 0.05 }
+		},
+	
+		vertexShader: [
+	
+			"varying vec2 vUv;",
+			"void main() {",
+				"vUv = uv;",
+				"gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
+			"}"
+		].join("\n"),
+	
+		fragmentShader: [
+			"uniform int byp;",//should we apply the glitch ?
+			
+			"uniform sampler2D tDiffuse;",
+			"uniform sampler2D tDisp;",
+			
+			"uniform float amount;",
+			"uniform float angle;",
+			"uniform float seed;",
+			"uniform float seed_x;",
+			"uniform float seed_y;",
+			"uniform float distortion_x;",
+			"uniform float distortion_y;",
+			"uniform float col_s;",
+				
+			"varying vec2 vUv;",
+			
+			
+			"float rand(vec2 co){",
+				"return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);",
+			"}",
+					
+			"void main() {",
+				"if(byp<1) {",
+					"vec2 p = vUv;",
+					"float xs = floor(gl_FragCoord.x / 0.5);",
+					"float ys = floor(gl_FragCoord.y / 0.5);",
+					//based on staffantans glitch shader for unity https://github.com/staffantan/unityglitch
+					"vec4 normal = texture2D (tDisp, p*seed*seed);",
+					"if(p.y<distortion_x+col_s && p.y>distortion_x-col_s*seed) {",
+						"if(seed_x>0.){",
+							"p.y = 1. - (p.y + distortion_y);",
+						"}",
+						"else {",
+							"p.y = distortion_y;",
+						"}",
+					"}",
+					"if(p.x<distortion_y+col_s && p.x>distortion_y-col_s*seed) {",
+						"if(seed_y>0.){",
+							"p.x=distortion_x;",
+						"}",
+						"else {",
+							"p.x = 1. - (p.x + distortion_x);",
+						"}",
+					"}",
+					"p.x+=normal.x*seed_x*(seed/5.);",
+					"p.y+=normal.y*seed_y*(seed/5.);",
+					//base from RGB shift shader
+					"vec2 offset = amount * vec2( cos(angle), sin(angle));",
+					"vec4 cr = texture2D(tDiffuse, p + offset);",
+					"vec4 cga = texture2D(tDiffuse, p);",
+					"vec4 cb = texture2D(tDiffuse, p - offset);",
+					"gl_FragColor = vec4(cr.r, cga.g, cb.b, cga.a);",
+					//add noise
+					"vec4 snow = 200.*amount*vec4(rand(vec2(xs * seed,ys * seed*50.))*0.2);",
+					"gl_FragColor = gl_FragColor+ snow;",
+				"}",
+				"else {",
+					"gl_FragColor=texture2D (tDiffuse, vUv);",
+				"}",
+			"}"
+	
+		].join("\n")
+	
+	};
+	
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(64)))
+
+/***/ },
+/* 72 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(THREE) {/**
@@ -50014,7 +50539,7 @@
 	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(64)))
 
 /***/ },
-/* 71 */
+/* 73 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(THREE) {/**
@@ -50107,7 +50632,7 @@
 	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(64)))
 
 /***/ },
-/* 72 */
+/* 74 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(THREE) {/**
@@ -50173,7 +50698,7 @@
 	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(64)))
 
 /***/ },
-/* 73 */
+/* 75 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(THREE) {/**
@@ -50293,7 +50818,7 @@
 	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(64)))
 
 /***/ },
-/* 74 */
+/* 76 */
 /***/ function(module, exports) {
 
 	var Controls = (function () {
@@ -50359,7 +50884,7 @@
 	//# sourceMappingURL=controls.js.map
 
 /***/ },
-/* 75 */
+/* 77 */
 /***/ function(module, exports) {
 
 	//algorithm http://www.neocomputer.org/projects/eller.html

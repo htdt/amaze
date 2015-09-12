@@ -7,8 +7,8 @@ export var spaceVertexShader = `
 `;
 
 export var spaceFragmentShader = `
+  // https://www.shadertoy.com/view/XlfGRj
   // Star Nest by Pablo Román Andrioli
-
   // This content is under the MIT License.
 
   #define iterations 17
@@ -41,7 +41,7 @@ export var spaceFragmentShader = `
 
     //mouse rotation
     float a1=.5+.1;
-    float a2=.8+.1;
+    float a2=.8+.2;
     mat2 rot1=mat2(cos(a1),sin(a1),-sin(a1),cos(a1));
     mat2 rot2=mat2(cos(a2),sin(a2),-sin(a2),cos(a2));
     dir.xz*=rot1;

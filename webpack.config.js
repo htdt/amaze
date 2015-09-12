@@ -32,6 +32,7 @@ module.exports = {
     contentBase: ".",
     noInfo: true,
     hot: true,
-    inline: true
+    inline: true,
+    port: 9000
   }
 }

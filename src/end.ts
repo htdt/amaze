@@ -6,12 +6,12 @@ export class HeadObject{
   mesh: THREE.Mesh;
   materialWire: THREE.MeshBasicMaterial;
   materialSolid: THREE.MeshLambertMaterial;
-  reduceMap:number[];
+  reduceMap: number[];
 
   colorize(): void{
     let len = this.geometry.faces.length;
     for (var i = 0; i < len; i++)
-      this.geometry.faces[i].color.setHSL(Math.random(), .5, .5);
+      this.geometry.faces[i].color.setHSL(0, 0, Math.random()/5+.8);
 
     this.geometry.colorsNeedUpdate = true;
   }
@@ -45,9 +45,9 @@ export class HeadObject{
     ]);
   }
 
-lowpoly(t): void{
-  var face, oldFace;
-  for (var i = 0; i < this.geometry.faces.length; i++) {
+  lowpoly(t:number): void{
+    var face, oldFace;
+    for (var i = 0; i < this.geometry.faces.length; i++) {
       face = this.geometry.faces[i];
       oldFace = this.origGeometry.faces[i];
       face.a = oldFace.a;
@@ -56,10 +56,10 @@ lowpoly(t): void{
       while (face.a > t) face.a = this.reduceMap[face.a];
       while (face.b > t) face.b = this.reduceMap[face.b];
       while (face.c > t) face.c = this.reduceMap[face.c];
+    }
+    this.geometry.verticesNeedUpdate = true;
+    this.geometry.elementsNeedUpdate = true;
   }
-  this.geometry.verticesNeedUpdate = true;
-  this.geometry.elementsNeedUpdate = true;
-}
 
   constructor(){
     this.materialWire = new THREE.MeshBasicMaterial({
@@ -73,5 +73,9 @@ lowpoly(t): void{
       vertexColors: THREE.FaceColors,
       fog: true
     });
+  }
+
+  getMorphTargets(n): THREE.Vector3[]{
+    return this.origGeometry.vertices.slice(0,n);
   }
 }

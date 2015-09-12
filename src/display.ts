@@ -26,16 +26,19 @@ export class Display3D{
   resolution: THREE.Vector2;
   mazeHolder: THREE.Object3D;
   camera: THREE.PerspectiveCamera;
+  cameraRadius: number;
   renderer: THREE.WebGLRenderer;
   animator: Animator;
 
-  light: THREE.Light;
+  playerMeshGeometry: THREE.OctahedronGeometry;
+  playerWire: any;//THREE.Mesh;
   player: THREE.Object3D;
   protoGalaxy: THREE.Mesh;
   dustGeometry: THREE.Geometry;
   dustMaterial: THREE.PointCloudMaterial;
   morphingSphere: THREE.Mesh;
   spaceMaterial: THREE.ShaderMaterial;
+  finalHead: HeadObject;
 
   glitch: boolean;
   glitchComposer: THREE.EffectComposer;
@@ -43,9 +46,10 @@ export class Display3D{
   constructor(){
     this.resolution = new THREE.Vector2(window.innerWidth, window.innerHeight);
     this.scene = new THREE.Scene();
+    this.cameraRadius = 10;
     this.camera = new THREE.PerspectiveCamera(75, this.resolution.x/this.resolution.y, 1, 1000);
     this.camera.position.y = Display3D.scale*2.5;
-    this.renderer = new THREE.WebGLRenderer();
+    this.renderer = new THREE.WebGLRenderer({precision: "lowp"});
     this.renderer.setPixelRatio( window.devicePixelRatio );
     this.renderer.setSize(this.resolution.x, this.resolution.y);
     this.renderer.setClearColor(0xffffff);
@@ -60,66 +64,16 @@ export class Display3D{
 
     this.mazeHolder = new THREE.Object3D();
     this.scene.add(this.mazeHolder);
-
+     
+    this.scene.add(new THREE.AmbientLight(0x999999));
+    
     this.animator = new Animator();
     this.glitch = false;
     this.initSpaceMaterial();
     this.initPlayer();
-    this.initLight();
     this.initProtoGalaxy();
     this.initGlitch();
     this.initMorphingSphere();
-
-    /*var head = new HeadObject();
-    head.load().then(_=>{
-      head.mesh.position.set(100,50,100);
-      head.mesh.scale.set(50,50,50);
-      head.lowpoly(4);
-      head.colorize();
-      this.scene.add(head.mesh);
-
-      this.animator.play({
-        func: d=>head.mesh.rotation.y=Math.sin(d*Math.PI*2)/2,
-        duration: 30000, loop: true
-      });
-      
-      this.animator.play({
-        func: d=>{
-          head.lowpoly(d*d*d*d * 996 + 4);
-          
-        },
-        duration: 15000
-      }).then(_=>{
-        this.animator.play({
-          func: _=> {
-            if (Math.random()>.8){
-              head.lowpoly(Math.pow(Math.random(),2) * 996 + 4)
-              this.glitchMe(200);
-            }
-          },
-          duration: 1000, timer: true, loop: true});
-        
-        this.animator.play({
-          func: _=> {
-            if (Math.random()>.8){
-              if (head.mesh.material == head.materialWire)
-                head.mesh.material = head.materialSolid;
-              else head.mesh.material = head.materialWire;
-              this.glitchMe(100);
-            }
-          },
-          duration: 1000, timer: true, loop: true});
-      });
-
-    });*/
-
-  }
-
-  initLight(): void{
-    this.scene.add(new THREE.AmbientLight(0x999999));
-    this.light = new THREE.PointLight(0xffffff, .1);
-    this.light.position.y = Display3D.scale*10;
-    this.scene.add(this.light);
   }
 
   initShadowLight(): void{
@@ -152,35 +106,44 @@ export class Display3D{
   }
 
   initPlayer(): void{
-
-    var playerWire = new THREE.Mesh(
-      new THREE.OctahedronGeometry(Display3D.scale/3, 0),
-      new THREE.MeshBasicMaterial({color: 0, wireframe: true})
-    );
-
-    //OctahedronGeometry
-    //IcosahedronGeometry
-
     var playerSphere = new THREE.Mesh(
       new THREE.SphereGeometry(Display3D.scale/8, 16, 16),
       this.spaceMaterial
     );
 
+    
     this.player = new THREE.Object3D();
-    this.player.add(playerSphere);
-    this.player.add(playerWire);
-
     this.player.position.y = 0;
-    //this.player.castShadow = true;
-    this.mazeHolder.add(this.player);
+    this.player.add(playerSphere);
+    this.scene.add(this.player);
 
-    this.animator.play({
-      func: dt => {
-        this.player.position.y = Math.sin(dt*Math.PI*2)*Display3D.scale/16;
-        playerWire.rotation.z = dt*Math.PI;
-      },
-      duration: 2500,
-      loop: true});
+    this.finalHead = new HeadObject();
+    this.finalHead.load().then(()=>{
+      this.finalHead.lowpoly(6);
+      this.finalHead.colorize();
+
+      let meshGeometry = new THREE.OctahedronGeometry(2.33, 0);
+      meshGeometry.morphTargets.push({name: "head", vertices: this.finalHead.getMorphTargets(meshGeometry.vertices.length)});
+
+      this.playerWire = new THREE.Mesh(
+        meshGeometry,
+        new THREE.MeshBasicMaterial({color: 0, wireframe: true, morphTargets: true})
+      );
+
+      this.playerWire.scale.set(Display3D.scale/7,Display3D.scale/7,Display3D.scale/7);
+      this.player.add(this.playerWire);
+      this.finalHead.mesh.scale.set(Display3D.scale/7,Display3D.scale/7,Display3D.scale/7);
+
+      this.animator.play({
+        func: dt => {
+          this.player.position.y = Math.sin(dt*Math.PI*2)*Display3D.scale/16;
+          this.playerWire.rotation.z = dt*Math.PI;
+        },
+        duration: 2500,
+        loop: true,
+        object: this.player
+      });      
+    });
   }
 
   addEnvironment(w,h): void{
@@ -194,10 +157,6 @@ export class Display3D{
     plane.position.y = -Display3D.scale/2;
     //plane.receiveShadow = true;
     this.mazeHolder.add(plane);
-
-    this.light.position.x = w*Display3D.scale/2;
-    this.light.position.z = h*Display3D.scale/2;
-
     this.initDust(w,h);
   }
 
@@ -219,12 +178,33 @@ export class Display3D{
     displayObj.rotation.y = -physObj.angle;
   }
 
-  moveCamera(q: number): void{
-    this.camera.position.x = this.player.position.x - Math.cos(q)*Display3D.scale*2;
-    this.camera.position.z = this.player.position.z - Math.sin(q)*Display3D.scale*2;
-    this.camera.position.y = Display3D.scale*2.5;
+  moveCamera(q: number, up:boolean): void{
+    if (up && this.cameraRadius<3) this.cameraRadius+=.0025;
+    if (!up && this.cameraRadius>2) this.cameraRadius-=.01;
+    if (this.cameraRadius>3.01) this.cameraRadius-=.05;
+
+    this.camera.position.x = this.player.position.x - Math.cos(q)*Display3D.scale*this.cameraRadius;
+    this.camera.position.z = this.player.position.z - Math.sin(q)*Display3D.scale*this.cameraRadius;
+    this.camera.position.y = Display3D.scale*(this.cameraRadius+.5);
     this.camera.lookAt(new THREE.Vector3(
       this.player.position.x, Display3D.scale*1.25, this.player.position.z));
+  }
+
+  finalCameraMove(t: number, q: number): Promise<any>{  
+    var y = Display3D.scale*(this.cameraRadius+.5);
+    var y2 = Display3D.scale*1.25;
+
+    return this.animator.play({
+      func: dt => {
+        this.cameraRadius = dt + 2;
+        this.camera.position.x = this.player.position.x - Math.cos(q*(1-dt))*Display3D.scale*this.cameraRadius;
+        this.camera.position.z = this.player.position.z - Math.sin(q*(1-dt))*Display3D.scale*this.cameraRadius;
+        this.camera.position.y = y * (1-dt);
+        this.camera.lookAt(new THREE.Vector3(
+          this.player.position.x, y2 * (1-dt), this.player.position.z));
+      },
+      duration: t
+    });
   }
 
 
@@ -305,7 +285,7 @@ export class Display3D{
   initDust(w,h): void{
     this.dustGeometry = new THREE.Geometry();
 
-    for (let i=0;i<w*h/5;i++)
+    for (let i=0;i<w*h;i++)
       this.dustGeometry.vertices.push(new THREE.Vector3(
         Math.random() * (w+6) * Display3D.scale - Display3D.scale*3,
         Math.random() * 6 * Display3D.scale - Display3D.scale*3,
@@ -313,7 +293,7 @@ export class Display3D{
       ));
 
     this.dustMaterial = new THREE.PointCloudMaterial({
-      size: 3,color:0,fog: true});
+      size: 1,color:0xaaaaaa,fog: true});
 
     this.moreDust();
   }
@@ -453,6 +433,92 @@ export class Display3D{
     });
 
     return s;
+  }
+
+  playFinal(blockGameplay, cameraq): void{
+
+    this.animator.play({duration:3000})
+      .then(()=>this.glitchMe(200))
+      .then(()=>this.animator.play({duration:1500}))
+      .then(()=>this.glitchMe(200))
+      .then(()=>this.animator.play({duration:1500}))
+      .then(()=>this.glitchMe(700))
+      .then(()=>this.animator.play({duration:1500}))
+      .then(blockGameplay)
+      .then(()=>this.glitchMe(700))
+      .then(()=>this.scene.remove(this.mazeHolder))
+      .then(()=>this.animator.play({duration:1000}))
+      .then(()=>{  
+        this.animator.stop(this.player);
+        
+        let currotz = this.playerWire.rotation.z;
+        this.animator.play({
+          func: dt => this.playerWire.rotation.z = currotz*(1-dt)
+        });
+
+        var rotateme = () => {
+          let startq = this.player.rotation.y;
+          let duration = Math.random();
+          duration=Math.pow(duration,2)*1500;
+
+          this.animator.play({
+            func: dt => this.player.rotation.y = startq + dt/5,
+            duration: duration
+          }).then(()=>rotateme());
+        }
+        rotateme();
+        
+        this.finalCameraMove(5000, cameraq);
+        return this.animator.play({
+            func: dt=>{
+              this.playerWire.morphTargetInfluences[0] = dt;
+              this.playerWire.position.y = -dt*Display3D.scale*.33;
+              this.player.position.y = dt*Display3D.scale*.7;
+              var d = dt*3.3+1;
+              this.player.scale.set(d,d,d);
+            },
+            duration:5000
+          });
+      })
+      .then(()=>{
+        this.finalHead.mesh.position.y = -Display3D.scale*.33;
+        this.player.remove(this.playerWire);
+        this.player.add(this.finalHead.mesh);
+
+        return this.animator.play({
+          func: d => this.finalHead.lowpoly(d*d * 994 + 6),
+          duration: 20000});
+      }).then(_=>{
+        
+        var light = new THREE.PointLight(0xffffff,.25);
+        light.position.set(this.camera.position.x, this.camera.position.y, this.camera.position.z);
+        this.scene.add(light);
+
+        this.finalHead.mesh.material = this.finalHead.materialSolid;
+        this.glitchMe(70);
+
+        this.animator.play({
+          func: _=> {
+            if (Math.random()>.93){
+              this.finalHead.lowpoly(Math.pow(Math.random(),2) * 994 + 6)
+              this.glitchMe(200);
+            }
+          },
+          duration: 1000, timer: true, loop: true});
+        
+        this.animator.play({
+          func: _=> {
+            var rnd = Math.random();
+            var curmat = this.finalHead.mesh.material;
+
+            if (rnd<.075) this.finalHead.mesh.material = this.finalHead.materialSolid;
+            else if (rnd>.075 && rnd<.15) this.finalHead.mesh.material = this.finalHead.materialWire;
+            else if (rnd>.15 && rnd<.225) this.finalHead.mesh.material = this.spaceMaterial;
+
+            if (curmat != this.finalHead.mesh.material) this.glitchMe(70);
+          },
+          duration: 1000, timer: true, loop: true});
+     });
   }
 
   render(dt:number): void{
