@@ -7,6 +7,7 @@ declare module THREE{
     constructor(renderer: Renderer);
     render(): void;
     addPass(pass: RenderPass);
+    setSize(x:Number, y:Number);
   }
 
   export class GlitchPass{

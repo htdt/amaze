@@ -13,7 +13,7 @@
   "devDependencies": {
     "json-loader": "^0.5.2",
     "raw-loader": "^0.5.1",
-    "typescript": "^1.6.0-beta",
+    "typescript": "^1.6.2",
     "typescript-simple-loader": "^0.3.7",
     "webpack": "^1.10.5"
   },

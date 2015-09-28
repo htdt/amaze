@@ -5,8 +5,8 @@ module.exports = {
 
   context: __dirname + '/src',
   entry: {
-    main: './main.ts',
-    obj: './lowpoly.ts'
+    main: './main.ts'
+    //obj: './lowpoly.ts'
   },
   resolve: {
     extensions: ['', '.ts', '.js']
@@ -34,5 +34,6 @@ module.exports = {
     hot: true,
     inline: true,
     port: 9000
+    //host: '192.168.43.215'
   }
 }

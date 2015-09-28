@@ -17,12 +17,19 @@ export function EllerMaze(width=16, height=16) {
   drawline(last(), false);
   border();
 
+  fillHoles();
   //log();
   return map;
 
   function log(){
     for (let n=0;n<map.length;n++)
       console.log(map[n].map(el=>el?"#":"-").join(""));
+  }
+
+  function fillHoles(){
+    for (let n=1;n<map.length-1;n++)
+    for (let x=1;x<map[n].length-1;x++)
+    if (map[n][x-1] && map[n][x+1] && map[n-1][x] && map[n+1][x]) map[n][x] = true;
   }
 
   function line1() {

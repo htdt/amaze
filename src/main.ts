@@ -29,12 +29,11 @@ class WorldObject{
 
 class Player extends WorldObject{
   keyb: Controls;
-  angle: number;
+  angle: number = 0;
 
   constructor(view: THREE.Object3D, body: p2.Body, pos: number[]){
     super(view, body);
     this.keyb = new Controls();
-    this.angle = 0;
     this.body.position = pos;
   }
 
@@ -91,7 +90,7 @@ class World{
       object: this.display.dustMaterial
     });
 
-    //setTimeout(()=>this.display.playFinal(()=>{this.fin = true}, this.me.angle), 5000);
+    setTimeout(()=>this.display.playFinal(()=>{this.fin = true}, this.me.angle, this.msg), 3000);
   }
   
   mainLoop(ts = null) {
@@ -102,7 +101,10 @@ class World{
       this.phys.world.step(dt/1000);
       this.me.move(dt);
       this.worldObjects.forEach(g=>g.up(this.display));
-      this.display.moveCamera(this.me.angle, this.me.keyb.up>0);
+      this.display.moveCamera(
+        this.me.angle,
+        this.me.keyb.up>0,
+        this.me.keyb.turn);
     }
 
     this.display.render(dt);
@@ -168,7 +170,7 @@ class World{
           if (this.hitCounter<this.msg.length)
             this.addTarget(this.getRandomPosition());
           else
-            this.display.playFinal(()=>{this.fin = true}, this.me.angle);
+            this.display.playFinal(()=>{this.fin = true}, this.me.angle, this.msg);
         });
     }});
   }

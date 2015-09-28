@@ -6,7 +6,6 @@ import {spaceVertexShader, spaceFragmentShader} from "./shaders";
 
 import './glitch/CopyShader';
 import './glitch/DigitalGlitch';
-
 import './glitch/EffectComposer';
 import './glitch/RenderPass';
 import './glitch/MaskPass';
@@ -26,7 +25,8 @@ export class Display3D{
   resolution: THREE.Vector2;
   mazeHolder: THREE.Object3D;
   camera: THREE.PerspectiveCamera;
-  cameraRadius: number;
+  cameraRadius: number = 10;
+  cameraQ: number = 0;
   renderer: THREE.WebGLRenderer;
   animator: Animator;
 
@@ -46,10 +46,9 @@ export class Display3D{
   constructor(){
     this.resolution = new THREE.Vector2(window.innerWidth, window.innerHeight);
     this.scene = new THREE.Scene();
-    this.cameraRadius = 10;
     this.camera = new THREE.PerspectiveCamera(75, this.resolution.x/this.resolution.y, 1, 1000);
     this.camera.position.y = Display3D.scale*2.5;
-    this.renderer = new THREE.WebGLRenderer({precision: "lowp"});
+    this.renderer = new THREE.WebGLRenderer();
     this.renderer.setPixelRatio( window.devicePixelRatio );
     this.renderer.setSize(this.resolution.x, this.resolution.y);
     this.renderer.setClearColor(0xffffff);
@@ -178,16 +177,22 @@ export class Display3D{
     displayObj.rotation.y = -physObj.angle;
   }
 
-  moveCamera(q: number, up:boolean): void{
+  moveCamera(q: number, up:boolean, turn:number): void{
     if (up && this.cameraRadius<3) this.cameraRadius+=.0025;
     if (!up && this.cameraRadius>2) this.cameraRadius-=.01;
     if (this.cameraRadius>3.01) this.cameraRadius-=.05;
+
+    if (turn > 0 && this.cameraQ < .1) this.cameraQ+=.002;
+    if (turn < 0 && this.cameraQ > -.1) this.cameraQ-=.002;
+    if (turn == 0 && Math.abs(this.cameraQ) > 0) this.cameraQ*=.9;  
 
     this.camera.position.x = this.player.position.x - Math.cos(q)*Display3D.scale*this.cameraRadius;
     this.camera.position.z = this.player.position.z - Math.sin(q)*Display3D.scale*this.cameraRadius;
     this.camera.position.y = Display3D.scale*(this.cameraRadius+.5);
     this.camera.lookAt(new THREE.Vector3(
       this.player.position.x, Display3D.scale*1.25, this.player.position.z));
+    
+    this.camera.rotation.z += this.cameraQ;
   }
 
   finalCameraMove(t: number, q: number): Promise<any>{  
@@ -223,6 +228,9 @@ export class Display3D{
     glitchPass.renderToScreen = true;
     glitchPass.goWild = true;
     this.glitchComposer.addPass(glitchPass);
+    this.glitchComposer.setSize(
+      this.resolution.x * window.devicePixelRatio,
+      this.resolution.y * window.devicePixelRatio);
   }
 
   glitchMe(dt:number): Promise<any>{
@@ -435,8 +443,13 @@ export class Display3D{
     return s;
   }
 
-  playFinal(blockGameplay, cameraq): void{
+  playFinal(blockGameplay: () => any, cameraq: number, msgArr: string[]): void{
 
+    var msgBottom = document.getElementById("msg");
+    var msg = document.getElementById("msg-fin");
+
+    msg.innerHTML = msgArr.join('<br>').replace(/ /g,'').replace("u<br>l","u&nbsp;l");
+    
     this.animator.play({duration:3000})
       .then(()=>this.glitchMe(200))
       .then(()=>this.animator.play({duration:1500}))
@@ -446,7 +459,10 @@ export class Display3D{
       .then(()=>this.animator.play({duration:1500}))
       .then(blockGameplay)
       .then(()=>this.glitchMe(700))
-      .then(()=>this.scene.remove(this.mazeHolder))
+      .then(()=>{
+        this.scene.remove(this.mazeHolder);
+        msgBottom.style.display = "none";
+      })
       .then(()=>this.animator.play({duration:1000}))
       .then(()=>{  
         this.animator.stop(this.player);
@@ -494,6 +510,7 @@ export class Display3D{
         light.position.set(this.camera.position.x, this.camera.position.y, this.camera.position.z);
         this.scene.add(light);
 
+        msg.style.display = "block";
         this.finalHead.mesh.material = this.finalHead.materialSolid;
         this.glitchMe(70);
 
@@ -511,9 +528,18 @@ export class Display3D{
             var rnd = Math.random();
             var curmat = this.finalHead.mesh.material;
 
-            if (rnd<.075) this.finalHead.mesh.material = this.finalHead.materialSolid;
-            else if (rnd>.075 && rnd<.15) this.finalHead.mesh.material = this.finalHead.materialWire;
-            else if (rnd>.15 && rnd<.225) this.finalHead.mesh.material = this.spaceMaterial;
+            if (rnd<.075){
+              msg.style.display = "block";
+              this.finalHead.mesh.material = this.finalHead.materialSolid;
+            }
+            else if (rnd>.075 && rnd<.15){
+              msg.style.display = "none";
+              this.finalHead.mesh.material = this.finalHead.materialWire;
+            }
+            else if (rnd>.15 && rnd<.225){
+              msg.style.display = "block";
+              this.finalHead.mesh.material = this.spaceMaterial;
+            }
 
             if (curmat != this.finalHead.mesh.material) this.glitchMe(70);
           },
