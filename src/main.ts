@@ -90,7 +90,7 @@ class World{
       object: this.display.dustMaterial
     });
 
-    setTimeout(()=>this.display.playFinal(()=>{this.fin = true}, this.me.angle, this.msg), 3000);
+    //setTimeout(()=>this.display.playFinal(()=>{this.fin = true}, this.me.angle, this.msg), 3000);
   }
   
   mainLoop(ts = null) {

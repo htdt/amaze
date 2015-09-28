@@ -1,7 +1,7 @@
 var webpack = require("webpack");
 
 module.exports = {
-  devtool: 'source-map',
+  //devtool: 'source-map',
 
   context: __dirname + '/src',
   entry: {
