@@ -64,7 +64,7 @@ export class HeadObject{
   constructor(){
     this.materialWire = new THREE.MeshBasicMaterial({
       wireframe: true,
-      color: 0,
+      color: 0xffffff,
       fog: true
     });
 

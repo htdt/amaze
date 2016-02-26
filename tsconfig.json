@@ -26,6 +26,7 @@
     "src/display.ts",
     "src/physics.ts",
     "src/lowpoly.ts",
+    "src/sound.ts",
     "src/main.ts"
   ]
 }

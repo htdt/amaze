@@ -39,6 +39,7 @@ export class Display3D{
   morphingSphere: THREE.Mesh;
   spaceMaterial: THREE.ShaderMaterial;
   finalHead: HeadObject;
+  wallMaterial: THREE.MeshLambertMaterial;
 
   glitch: boolean;
   glitchComposer: THREE.EffectComposer;
@@ -73,6 +74,21 @@ export class Display3D{
     this.initProtoGalaxy();
     this.initGlitch();
     this.initMorphingSphere();
+    this.initWallMaterial();
+  }
+
+  initWallMaterial(): void{
+    this.wallMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff, shading: THREE.FlatShading });
+    this.animator.play({
+      func: x => {
+        this.wallMaterial.color.setHSL(x,.8,.8);
+        this.dustMaterial.color.setHSL(x,.8,.8);
+        this.scene.fog.color.setHSL(x,.8,.8);
+        this.renderer.setClearColor(this.scene.fog.color);
+      },
+      duration: 200000,
+      loop: true
+    });
   }
 
   initShadowLight(): void{
@@ -126,7 +142,7 @@ export class Display3D{
 
       this.playerWire = new THREE.Mesh(
         meshGeometry,
-        new THREE.MeshBasicMaterial({color: 0, wireframe: true, morphTargets: true})
+        new THREE.MeshBasicMaterial({color: 0xffffff, wireframe: true, morphTargets: true})
       );
 
       this.playerWire.scale.set(Display3D.scale/7,Display3D.scale/7,Display3D.scale/7);
@@ -148,7 +164,8 @@ export class Display3D{
   addEnvironment(w,h): void{
     var plane = new THREE.Mesh(
       new THREE.PlaneBufferGeometry(w*Display3D.scale, h*Display3D.scale),
-      new THREE.MeshLambertMaterial({color: 0xffffff, side: THREE.DoubleSide/*, wireframe:true*/})
+      this.wallMaterial
+      // new THREE.MeshLambertMaterial({color: 0xffffff, side: THREE.DoubleSide/*, wireframe:true*/})
     );
     plane.rotation.x = Math.PI/2;
     plane.position.x = w*Display3D.scale/2 - Display3D.scale/2;
@@ -160,10 +177,9 @@ export class Display3D{
   }
 
   addWall(x:number, y:number): THREE.Mesh {
-    let wallMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff, shading: THREE.FlatShading });
     let curWall = new THREE.Mesh(
       new THREE.BoxGeometry(Display3D.scale, Display3D.scale, Display3D.scale),
-      wallMaterial
+      this.wallMaterial
     );
     curWall.position.x = x*Display3D.scale;
     curWall.position.z = y*Display3D.scale;
@@ -182,8 +198,8 @@ export class Display3D{
     if (!up && this.cameraRadius>2) this.cameraRadius-=.01;
     if (this.cameraRadius>3.01) this.cameraRadius-=.05;
 
-    if (turn > 0 && this.cameraQ < .1) this.cameraQ+=.002;
-    if (turn < 0 && this.cameraQ > -.1) this.cameraQ-=.002;
+    if (turn > 0 && this.cameraQ < .1) this.cameraQ+=.0012;
+    if (turn < 0 && this.cameraQ > -.1) this.cameraQ-=.0012;
     if (turn == 0 && Math.abs(this.cameraQ) > 0) this.cameraQ*=.9;  
 
     this.camera.position.x = this.player.position.x - Math.cos(q)*Display3D.scale*this.cameraRadius;
@@ -201,6 +217,7 @@ export class Display3D{
 
     return this.animator.play({
       func: dt => {
+        dt = -2*dt*dt*(2*dt-3)/2; //easing
         this.cameraRadius = dt + 2;
         this.camera.position.x = this.player.position.x - Math.cos(q*(1-dt))*Display3D.scale*this.cameraRadius;
         this.camera.position.z = this.player.position.z - Math.sin(q*(1-dt))*Display3D.scale*this.cameraRadius;
@@ -293,7 +310,7 @@ export class Display3D{
   initDust(w,h): void{
     this.dustGeometry = new THREE.Geometry();
 
-    for (let i=0;i<w*h;i++)
+    for (let i=0;i<w*h*3;i++)
       this.dustGeometry.vertices.push(new THREE.Vector3(
         Math.random() * (w+6) * Display3D.scale - Display3D.scale*3,
         Math.random() * 6 * Display3D.scale - Display3D.scale*3,
@@ -474,11 +491,11 @@ export class Display3D{
 
         var rotateme = () => {
           let startq = this.player.rotation.y;
-          let duration = Math.random();
-          duration=Math.pow(duration,2)*1500;
+          let duration = Math.pow(Math.random(),2)*1500;
+          let direction = Math.random()>.2 ? 1 : -1;
 
           this.animator.play({
-            func: dt => this.player.rotation.y = startq + dt/5,
+            func: dt => this.player.rotation.y = startq + dt/5*direction,
             duration: duration
           }).then(()=>rotateme());
         }

@@ -2,6 +2,7 @@ import {Physics} from "./physics";
 import {Display3D} from "./display";
 import {Controls} from "./controls";
 import {EllerMaze} from "./ellermaze"
+// import {AudioPlayer} from "./sound"
 
 
 function fullscreen(el){
@@ -56,14 +57,21 @@ class World{
   msgDisplay: HTMLElement;
   timer: number;
   fin: boolean;
+  // audio: AudioPlayer;
 
   constructor(){
-    this.msg = ["Reality"," doesn’t"," exist"," until"," you"," look"," at&nbsp;it"];
+    this.msg = ["Reality"," does&nbsp;not"," exist"," until"," you"," look"," at&nbsp;it"];
     this.msgDisplay = document.getElementById("msg");
 
     this.phys = new Physics();
     this.display = new Display3D();
+    // this.audio = new AudioPlayer();
     this.maze = EllerMaze(10,10);
+
+    // this.audio.load().then(()=>{
+
+    // })
+
     
     let ppos = this.getRandomPosition();
     this.me = new Player(this.display.player, this.phys.player, [ppos.x, ppos.y]);
@@ -90,7 +98,7 @@ class World{
       object: this.display.dustMaterial
     });
 
-    //setTimeout(()=>this.display.playFinal(()=>{this.fin = true}, this.me.angle, this.msg), 3000);
+    // setTimeout(()=>this.display.playFinal(()=>{this.fin = true}, this.me.angle, this.msg), 3000);
   }
   
   mainLoop(ts = null) {
@@ -108,6 +116,8 @@ class World{
     }
 
     this.display.render(dt);
+
+    // this.audio.update(dt);
 
     this.prevLoopTS = ts;
     requestAnimationFrame((ts) => this.mainLoop(ts));
@@ -177,4 +187,4 @@ class World{
 }
 
 InitUI();
-new World();
+window['amaze'] = new World();
