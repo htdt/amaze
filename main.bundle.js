@@ -14180,9 +14180,9 @@
 	        this.wallMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff, shading: THREE.FlatShading });
 	        this.animator.play({
 	            func: function (x) {
-	                _this.wallMaterial.color.setHSL(x, .8, .8);
-	                _this.dustMaterial.color.setHSL(x, .8, .8);
-	                _this.scene.fog.color.setHSL(x, .8, .8);
+	                _this.wallMaterial.color.setHSL(x, .5, .85);
+	                _this.dustMaterial.color.setHSL(x, .5, .85);
+	                _this.scene.fog.color.setHSL(x, .5, .85);
 	                _this.renderer.setClearColor(_this.scene.fog.color);
 	            },
 	            duration: 200000,

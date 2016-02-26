@@ -81,9 +81,9 @@ export class Display3D{
     this.wallMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff, shading: THREE.FlatShading });
     this.animator.play({
       func: x => {
-        this.wallMaterial.color.setHSL(x,.8,.8);
-        this.dustMaterial.color.setHSL(x,.8,.8);
-        this.scene.fog.color.setHSL(x,.8,.8);
+        this.wallMaterial.color.setHSL(x,.5,.85);
+        this.dustMaterial.color.setHSL(x,.5,.85);
+        this.scene.fog.color.setHSL(x,.5,.85);
         this.renderer.setClearColor(this.scene.fog.color);
       },
       duration: 200000,
