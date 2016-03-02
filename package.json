@@ -5,17 +5,19 @@
   "main": "src/main.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "webpack-dev-server --no-info --hot --inline",
-    "build": "webpack"
+    "serve": "webpack-dev-server --no-info --hot --inline",
+    "build": "webpack",
+    "lint": "tslint src/**/*.ts"
   },
   "author": "crush",
   "license": "MIT",
   "devDependencies": {
     "json-loader": "^0.5.2",
     "raw-loader": "^0.5.1",
-    "typescript": "^1.6.2",
-    "typescript-simple-loader": "^0.3.7",
-    "webpack": "^1.10.5"
+    "ts-loader": "^0.8.1",
+    "tslint": "^3.5.0",
+    "typescript": "^1.8.7",
+    "webpack": "^1.12.14"
   },
   "dependencies": {
     "p2": "^0.7.0",

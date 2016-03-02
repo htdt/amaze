@@ -1,16 +1,23 @@
-//THREE imported globally in webpack.config.js:25
+// THREE imported globally in webpack.config.js:25
 
 import {Animator} from "./animator";
 import {HeadObject} from "./end";
 import {spaceVertexShader, spaceFragmentShader} from "./shaders";
+import {GameMessage} from "../engine/msg";
 
-import './glitch/CopyShader';
-import './glitch/DigitalGlitch';
-import './glitch/EffectComposer';
-import './glitch/RenderPass';
-import './glitch/MaskPass';
-import './glitch/ShaderPass';
-import './glitch/GlitchPass';
+import "../vendor/audio/Audio";
+import "../vendor/audio/AudioAnalyser";
+import "../vendor/audio/AudioBuffer";
+import "../vendor/audio/AudioListener";
+import "../vendor/audio/PositionalAudio";
+
+import "../vendor/glitch/CopyShader";
+import "../vendor/glitch/DigitalGlitch";
+import "../vendor/glitch/EffectComposer";
+import "../vendor/glitch/RenderPass";
+import "../vendor/glitch/MaskPass";
+import "../vendor/glitch/ShaderPass";
+import "../vendor/glitch/GlitchPass";
 
 
 interface galaxyView{
@@ -64,9 +71,8 @@ export class Display3D{
 
     this.mazeHolder = new THREE.Object3D();
     this.scene.add(this.mazeHolder);
-     
     this.scene.add(new THREE.AmbientLight(0x999999));
-    
+
     this.animator = new Animator();
     this.glitch = false;
     this.initSpaceMaterial();
@@ -460,12 +466,7 @@ export class Display3D{
     return s;
   }
 
-  playFinal(blockGameplay: () => any, cameraq: number, msgArr: string[]): void{
-
-    var msgBottom = document.getElementById("msg");
-    var msg = document.getElementById("msg-fin");
-
-    msg.innerHTML = msgArr.join('<br>').replace(/ /g,'').replace("u<br>l","u&nbsp;l");
+  playFinal(blockGameplay: () => any, cameraq: number, msg: GameMessage): void{
     
     this.animator.play({duration:3000})
       .then(()=>this.glitchMe(200))
@@ -478,7 +479,7 @@ export class Display3D{
       .then(()=>this.glitchMe(700))
       .then(()=>{
         this.scene.remove(this.mazeHolder);
-        msgBottom.style.display = "none";
+        msg.hide();
       })
       .then(()=>this.animator.play({duration:1000}))
       .then(()=>{  
@@ -527,7 +528,9 @@ export class Display3D{
         light.position.set(this.camera.position.x, this.camera.position.y, this.camera.position.z);
         this.scene.add(light);
 
-        msg.style.display = "block";
+        msg.final();
+        msg.show();
+
         this.finalHead.mesh.material = this.finalHead.materialSolid;
         this.glitchMe(70);
 
@@ -545,16 +548,16 @@ export class Display3D{
             var rnd = Math.random();
             var curmat = this.finalHead.mesh.material;
 
-            if (rnd<.075){
-              msg.style.display = "block";
+            if (rnd < .075) {
+              msg.show();
               this.finalHead.mesh.material = this.finalHead.materialSolid;
             }
-            else if (rnd>.075 && rnd<.15){
-              msg.style.display = "none";
+            else if (rnd > .075 && rnd < .15) {
+              msg.hide();
               this.finalHead.mesh.material = this.finalHead.materialWire;
             }
-            else if (rnd>.15 && rnd<.225){
-              msg.style.display = "block";
+            else if (rnd > .15 && rnd < .225) {
+              msg.show();
               this.finalHead.mesh.material = this.spaceMaterial;
             }
 

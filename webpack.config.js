@@ -16,7 +16,7 @@ module.exports = {
       { test: /\.json$/, loader: 'json' },
       { test: /\.css$/, loader: 'raw' },
       { test: /\.html$/, loader: 'raw' },
-      { test: /\.ts$/, loader: 'typescript-simple-loader' }
+      { test: /\.ts$/, loader: 'ts-loader' }
     ]
   },
   output: {
@@ -25,7 +25,7 @@ module.exports = {
   },
   plugins: [
     new webpack.ProvidePlugin({
-      THREE: __dirname + "/src/lib/three"
+      THREE: __dirname + "/src/vendor/three"
     })
   ],
   devServer: {
@@ -33,7 +33,7 @@ module.exports = {
     noInfo: true,
     hot: true,
     inline: true,
-    port: 9000
-    // host: '192.168.1.38'
+    port: 9000,
+    host: 'amaze.dev'
   }
 }
