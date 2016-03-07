@@ -1,4 +1,4 @@
-import {Display3D} from "../display/display";
+import {Display3D} from '../display/display';
 
 export class WorldObject {
   constructor(public view: any, public body: p2.Body) {}

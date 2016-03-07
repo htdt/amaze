@@ -1,35 +1,32 @@
-//algorithm http://www.neocomputer.org/projects/eller.html
+// algorithm http://www.neocomputer.org/projects/eller.html
 
-export function EllerMaze(width=16, height=16) {
-  
-  var curstr = [];
-  var map = [];
-  var ls = width * 2 + 1;
+export function EllerMaze(width = 16, height = 16, debug = false) {
+  let curstr = [];
+  let map = [];
+  let ls = width * 2 + 1;
 
   for (let i = 0; i < width; i++) curstr[i] = i;
-  
   border();
-  for (var n = 0; n < height; n++) {
+  for (let n = 0; n < height; n++) {
     drawline(line1(), false);
     drawline(line2(), true);
     unnull();
   }
   drawline(last(), false);
   border();
-
   fillHoles();
-  //log();
+  if (debug) log();
   return map;
 
-  function log(){
-    for (let n=0;n<map.length;n++)
-      console.log(map[n].map(el=>el?"#":"-").join(""));
+  function log() {
+    for (let n = 0; n < map.length; n++)
+      console.log(map[n].map(el => el ? '#' : '-').join(''));
   }
 
-  function fillHoles(){
-    for (let n=1;n<map.length-1;n++)
-    for (let x=1;x<map[n].length-1;x++)
-    if (map[n][x-1] && map[n][x+1] && map[n-1][x] && map[n+1][x]) map[n][x] = true;
+  function fillHoles() {
+    for (let n = 1; n < map.length - 1; n++)
+    for (let x = 1; x < map[n].length - 1; x++)
+    if (map[n][x - 1] && map[n][x + 1] && map[n - 1][x] && map[n + 1][x]) map[n][x] = true;
   }
 
   function line1() {
@@ -56,7 +53,7 @@ export function EllerMaze(width=16, height=16) {
 
   function line2() {
     let result = [];
-    for (var i = 0; i < width; i++) {
+    for (let i = 0; i < width; i++) {
       result[i] = false;
       let l = curstr.filter(x => x == curstr[i]).length;
       if (l > 1 && Math.random() > .5) {
@@ -67,17 +64,17 @@ export function EllerMaze(width=16, height=16) {
     return result;
   }
 
-  function unique(){
-    for (var i = 0;;i++)
+  function unique() {
+    for (let i = 0; ; i++)
       if (curstr.filter(x => x == i).length == 0) return i;
   }
 
-  function unnull(){
+  function unnull() {
     for (let i = 0; i < width; i++)
       if (curstr[i] == null) curstr[i] = unique();
   }
 
-  function last(){
+  function last() {
     let result = line1();
     for (let i = 0; i < width - 1; i++)
       if (curstr[i] != curstr[i + 1])
@@ -88,16 +85,16 @@ export function EllerMaze(width=16, height=16) {
   function drawline(l, isline2) {
     let outl = [];
     outl.push(true);
-    for (let i = 0; i < width - 1; i++){
-      if (isline2) outl.push(l[i], Math.random()>.3);
+    for (let i = 0; i < width - 1; i++) {
+      if (isline2) outl.push(l[i], Math.random() > .3);
       else outl.push(false, l[i]);
     }
-    outl.push(l[width-1]);
+    outl.push(l[width - 1]);
     outl.push(true);
     map.push(outl);
   }
 
-  function border(){
+  function border() {
     let l = [];
     for (let i = 0; i < ls; i++) l.push(true);
     map.push(l);

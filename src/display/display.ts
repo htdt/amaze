@@ -81,6 +81,22 @@ export class Display3D{
     this.initGlitch();
     this.initMorphingSphere();
     this.initWallMaterial();
+    this.startDust();
+  }
+
+  private startDust(): void {
+    let dustCounter = 0;
+    this.animator.play({
+      func: _ => {
+        this.moreDust();
+        if (++dustCounter >= 20)
+          this.animator.stop(this.dustMaterial);
+      },
+      duration: 10000,
+      loop: true,
+      timer: true,
+      object: this.dustMaterial,
+    });
   }
 
   initWallMaterial(): void{

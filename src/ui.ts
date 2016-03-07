@@ -1,4 +1,4 @@
-function fullscreen(el){
+function fullscreen(el) {
   if (el.requestFullscreen) {
     el.requestFullscreen();
   } else if (el.msRequestFullscreen) {
@@ -10,8 +10,8 @@ function fullscreen(el){
   }
 }
 
-export function InitUI(){
-  var fsIcon = document.getElementById("fullscreen");
+export function InitUI() {
+  let fsIcon = document.getElementById('fullscreen');
   if (fsIcon)
-    fsIcon.addEventListener("click", () => fullscreen(document.body), false);
+    fsIcon.addEventListener('click', () => fullscreen(document.body), false);
 }
