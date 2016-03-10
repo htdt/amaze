@@ -1,5 +1,9 @@
-import {InitUI} from "./ui";
-import {World} from "./engine/world";
+import {InitUI} from './ui';
+import {World} from './engine/world';
+
+interface CustomWindow extends Window {
+  amaze: World;
+}
 
 InitUI();
-window['amaze'] = new World();
+(<CustomWindow>window).amaze = new World();

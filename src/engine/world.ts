@@ -3,12 +3,8 @@ import {Physics} from './physics';
 import {EllerMaze} from './ellermaze';
 import {GameMessage} from './msg';
 import {WorldObject} from './worldobject';
+import {Vector2d} from './worldobject';
 import {Player} from './player';
-
-interface Vector2d {
-  x: number;
-  y: number;
-}
 
 export class World {
   private maze: boolean[][];
@@ -25,8 +21,7 @@ export class World {
     this.display = new Display3D();
     this.maze = EllerMaze(10, 10);
     this.msg = new GameMessage();
-    let ppos = this.getRandomPosition();
-    this.me = new Player(this.display.player, this.phys.player, [ppos.x, ppos.y]);
+    this.me = new Player(this.display.player, this.phys.player, this.getRandomPosition());
     this.worldObjects = [this.me];
     this.buildWallsAndFloor();
     this.addTarget(this.getRandomPosition());

@@ -6,3 +6,8 @@ export class WorldObject {
     display.moveObject(this.view, this.body);
   }
 }
+
+export interface Vector2d {
+  x: number;
+  y: number;
+}
