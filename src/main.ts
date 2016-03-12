@@ -1,9 +1,7 @@
 import {InitUI} from './ui';
 import {World} from './engine/world';
 
-interface CustomWindow extends Window {
-  amaze: World;
-}
-
 InitUI();
-(<CustomWindow>window).amaze = new World();
+/* tslint:disable:no-string-literal */
+window['amaze'] = new World();
+/* tslint:enable:no-string-literal */

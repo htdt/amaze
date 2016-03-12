@@ -69,7 +69,7 @@ export class World {
 
   private addTarget(v: Vector2d): void {
       let p = this.phys.addTarget(v.x, v.y);
-      let o = this.display.addMorphingSphere(v.x, v.y);
+      let o = this.display.morphingSphere.add(v.x, v.y);
       let newobj = new WorldObject(o, p);
       this.worldObjects.push(newobj);
       this.onTargetHit(newobj);
@@ -88,7 +88,7 @@ export class World {
     let i = this.worldObjects.map(o => o.view.id).indexOf(obj.view.id);
     if (i >= 0) this.worldObjects.splice(i, 1);
     this.phys.world.removeBody(obj.body);
-    this.display.mazeHolder.remove(obj.view);
+    this.display.container.remove(obj.view);
     this.display.animator.stop(obj.view);
     return this.addGalaxy(obj);
   }
