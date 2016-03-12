@@ -2,7 +2,7 @@
 
 import {Animator} from './core/animator';
 import {Camera} from './core/camera';
-import {HeadObject} from './core/end';
+import {HeadMaterials, Head} from './objects/head';
 import {spaceVertexShader, spaceFragmentShader} from './sfx/shaders';
 import {GameMessage} from '../engine/msg';
 import {Dust} from './objects/dust';
@@ -37,7 +37,7 @@ export class Display3D {
   protoGalaxy: THREE.Mesh;
   morphingSphere: MorphingSphere;
   spaceMaterial: THREE.ShaderMaterial;
-  finalHead: HeadObject;
+  finalHead: Head;
   wallMaterial: THREE.MeshLambertMaterial;
   dust: Dust;
 
@@ -129,10 +129,9 @@ export class Display3D {
     this.player.add(playerSphere);
     this.scene.add(this.player);
 
-    this.finalHead = new HeadObject();
-    this.finalHead.load().then(()=>{
+    this.finalHead = new Head(this.spaceMaterial);
+    this.finalHead.load().then(() => {
       this.finalHead.lowpoly(6);
-      this.finalHead.colorize();
 
       let meshGeometry = new THREE.OctahedronGeometry(2.33, 0);
       meshGeometry.morphTargets.push({name: "head", vertices: this.finalHead.getMorphTargets(meshGeometry.vertices.length)});
@@ -142,9 +141,8 @@ export class Display3D {
         new THREE.MeshBasicMaterial({color: 0xffffff, wireframe: true, morphTargets: true})
       );
 
-      this.playerWire.scale.set(SCALE/7,SCALE/7,SCALE/7);
+      this.playerWire.scale.set(SCALE / 7, SCALE / 7, SCALE / 7);
       this.player.add(this.playerWire);
-      this.finalHead.mesh.scale.set(SCALE/7,SCALE/7,SCALE/7);
 
       this.animator.play({
         func: dt => {
@@ -318,9 +316,8 @@ export class Display3D {
           });
       })
       .then(()=>{
-        this.finalHead.mesh.position.y = -SCALE*.33;
         this.player.remove(this.playerWire);
-        this.player.add(this.finalHead.mesh);
+        this.finalHead.show(this.player);
 
         return this.animator.play({
           func: d => this.finalHead.lowpoly(d*d * 994 + 6),
@@ -334,7 +331,7 @@ export class Display3D {
         msg.final();
         msg.show();
 
-        this.finalHead.mesh.material = this.finalHead.materialSolid;
+        this.finalHead.setMaterial(HeadMaterials.Solid);
         this.glitchMe(70);
 
         this.animator.play({
@@ -345,26 +342,26 @@ export class Display3D {
             }
           },
           duration: 1000, timer: true, loop: true});
-        
+
         this.animator.play({
-          func: _=> {
-            var rnd = Math.random();
-            var curmat = this.finalHead.mesh.material;
+          func: _ => {
+            let rnd = Math.random();
+            let updated = false;
 
             if (rnd < .075) {
               msg.show();
-              this.finalHead.mesh.material = this.finalHead.materialSolid;
+              updated = this.finalHead.setMaterial(HeadMaterials.Solid);
             }
             else if (rnd > .075 && rnd < .15) {
               msg.hide();
-              this.finalHead.mesh.material = this.finalHead.materialWire;
+              updated = this.finalHead.setMaterial(HeadMaterials.Wire);
             }
             else if (rnd > .15 && rnd < .225) {
               msg.show();
-              this.finalHead.mesh.material = this.spaceMaterial;
+              updated = this.finalHead.setMaterial(HeadMaterials.Space);
             }
 
-            if (curmat != this.finalHead.mesh.material) this.glitchMe(70);
+            if (updated) this.glitchMe(70);
           },
           duration: 1000, timer: true, loop: true});
      });
