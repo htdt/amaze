@@ -1,12 +1,13 @@
 // THREE imported globally in webpack.config.js:25
 
-import {Animator} from './animator';
-import {HeadObject} from './end';
-import {spaceVertexShader, spaceFragmentShader} from './shaders';
+import {Animator} from './core/animator';
+import {Camera} from './core/camera';
+import {HeadObject} from './core/end';
+import {spaceVertexShader, spaceFragmentShader} from './sfx/shaders';
 import {GameMessage} from '../engine/msg';
-import {Dust} from './dust';
-import {sphericalTo3d} from './math';
-import {MorphingSphere} from './morphing-sphere';
+import {Dust} from './objects/dust';
+import {sphericalTo3d} from './core/math';
+import {MorphingSphere} from './objects/morphing-sphere';
 
 import '../vendor/glitch/CopyShader';
 import '../vendor/glitch/DigitalGlitch';
@@ -23,14 +24,10 @@ interface GalaxyView {
   view: THREE.Mesh;
 }
 
-export class Display3D{
-
+export class Display3D {
   scene: THREE.Scene;
-  resolution: THREE.Vector2;
   container: THREE.Object3D;
-  camera: THREE.PerspectiveCamera;
-  cameraRadius: number = 10;
-  cameraQ: number = 0;
+  camera: Camera;
   renderer: THREE.WebGLRenderer;
   animator: Animator;
 
@@ -48,33 +45,30 @@ export class Display3D{
   glitchComposer: THREE.EffectComposer;
 
   constructor() {
-    this.resolution = new THREE.Vector2(window.innerWidth, window.innerHeight);
+    let resolution = new THREE.Vector2(window.innerWidth, window.innerHeight);
+    this.animator = new Animator();
     this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(75, this.resolution.x/this.resolution.y, 1, 1000);
-    this.camera.position.y = SCALE*2.5;
+    this.camera = new Camera(resolution, this.animator);
     this.renderer = new THREE.WebGLRenderer();
     this.renderer.setPixelRatio( window.devicePixelRatio );
-    this.renderer.setSize(this.resolution.x, this.resolution.y);
+    this.renderer.setSize(resolution.x, resolution.y);
     this.renderer.setClearColor(0xffffff);
-    this.scene.fog = new THREE.FogExp2(0xffffff,0.004);
+    this.scene.fog = new THREE.FogExp2(0xffffff, 0.004);
     document.body.appendChild(this.renderer.domElement);
-    window.addEventListener('resize', () => {
-      this.resolution.set(window.innerWidth, window.innerHeight);
-      this.camera.aspect = this.resolution.x / this.resolution.y;
-      this.camera.updateProjectionMatrix();
-      this.renderer.setSize(this.resolution.x, this.resolution.y);
-    }, false);
+    // window.addEventListener('resize', () => {
+    //   this.renderer.setSize(this.resolution.x, this.resolution.y);
+    // }, false);
 
     this.container = new THREE.Object3D();
     this.scene.add(this.container);
     this.scene.add(new THREE.AmbientLight(0x999999));
 
-    this.animator = new Animator();
     this.glitch = false;
-    this.initSpaceMaterial();
+    this.initSpaceMaterial(resolution);
     this.initPlayer();
+    this.camera.target = this.player;
     this.initProtoGalaxy();
-    this.initGlitch();
+    this.initGlitch(resolution);
     this.initWallMaterial();
     this.morphingSphere = new MorphingSphere(this.animator, this.container);
     this.dust = new Dust(this.animator, this.container);
@@ -110,12 +104,12 @@ export class Display3D{
     this.scene.add(shadowLight);
   }
 
-  initSpaceMaterial(): void{
+  initSpaceMaterial(resolution: THREE.Vector2): void{
     this.spaceMaterial = new THREE.ShaderMaterial({
       vertexShader: spaceVertexShader,
       fragmentShader: spaceFragmentShader,
       uniforms: {
-        iResolution: { type: 'v2', value: this.resolution },
+        iResolution: { type: 'v2', value: resolution },
         iGlobalTime: { type: 'f', value: 0 },
         fogDensity: { type: "f", value: 0 },
         fogColor: { type: "c", value: new THREE.Vector3() },
@@ -130,7 +124,6 @@ export class Display3D{
       this.spaceMaterial
     );
 
-    
     this.player = new THREE.Object3D();
     this.player.position.y = 0;
     this.player.add(playerSphere);
@@ -197,43 +190,6 @@ export class Display3D{
     displayObj.rotation.y = -physObj.angle;
   }
 
-  moveCamera(q: number, up:boolean, turn:number): void{
-    if (up && this.cameraRadius<3) this.cameraRadius+=.0025;
-    if (!up && this.cameraRadius>2) this.cameraRadius-=.01;
-    if (this.cameraRadius>3.01) this.cameraRadius-=.05;
-
-    if (turn > 0 && this.cameraQ < .1) this.cameraQ+=.0012;
-    if (turn < 0 && this.cameraQ > -.1) this.cameraQ-=.0012;
-    if (turn == 0 && Math.abs(this.cameraQ) > 0) this.cameraQ*=.9;  
-
-    this.camera.position.x = this.player.position.x - Math.cos(q)*SCALE*this.cameraRadius;
-    this.camera.position.z = this.player.position.z - Math.sin(q)*SCALE*this.cameraRadius;
-    this.camera.position.y = SCALE*(this.cameraRadius+.5);
-    this.camera.lookAt(new THREE.Vector3(
-      this.player.position.x, SCALE*1.25, this.player.position.z));
-    
-    this.camera.rotation.z += this.cameraQ;
-  }
-
-  finalCameraMove(t: number, q: number): Promise<any>{  
-    var y = SCALE*(this.cameraRadius+.5);
-    var y2 = SCALE*1.25;
-
-    return this.animator.play({
-      func: dt => {
-        dt = -2*dt*dt*(2*dt-3)/2; //easing
-        this.cameraRadius = dt + 2;
-        this.camera.position.x = this.player.position.x - Math.cos(q*(1-dt))*SCALE*this.cameraRadius;
-        this.camera.position.z = this.player.position.z - Math.sin(q*(1-dt))*SCALE*this.cameraRadius;
-        this.camera.position.y = y * (1-dt);
-        this.camera.lookAt(new THREE.Vector3(
-          this.player.position.x, y2 * (1-dt), this.player.position.z));
-      },
-      duration: t
-    });
-  }
-
-
   initProtoGalaxy(): void{
     this.protoGalaxy = new THREE.Mesh(
       new THREE.SphereGeometry(SCALE/1.25, 16, 16),
@@ -241,17 +197,17 @@ export class Display3D{
     );
   }
 
-  initGlitch(): void{
+  initGlitch(resolution: THREE.Vector2): void{
     this.glitchComposer = new THREE.EffectComposer( this.renderer );
-    this.glitchComposer.addPass( new THREE.RenderPass( this.scene, this.camera ) );
+    this.glitchComposer.addPass( new THREE.RenderPass( this.scene, this.camera.camera ) );
 
     var glitchPass = new THREE.GlitchPass();
     glitchPass.renderToScreen = true;
     glitchPass.goWild = true;
     this.glitchComposer.addPass(glitchPass);
     this.glitchComposer.setSize(
-      this.resolution.x * window.devicePixelRatio,
-      this.resolution.y * window.devicePixelRatio);
+      resolution.x * window.devicePixelRatio,
+      resolution.y * window.devicePixelRatio);
   }
 
   glitchMe(dt:number): Promise<any>{
@@ -349,7 +305,7 @@ export class Display3D{
         }
         rotateme();
         
-        this.finalCameraMove(5000, cameraq);
+        this.camera.final(5000, cameraq);
         return this.animator.play({
             func: dt=>{
               this.playerWire.morphTargetInfluences[0] = dt;
@@ -372,7 +328,7 @@ export class Display3D{
       }).then(_=>{
         
         var light = new THREE.PointLight(0xffffff,.25);
-        light.position.set(this.camera.position.x, this.camera.position.y, this.camera.position.z);
+        // light.position.set(this.camera.position.x, this.camera.position.y, this.camera.position.z);
         this.scene.add(light);
 
         msg.final();
@@ -418,6 +374,6 @@ export class Display3D{
     this.spaceMaterial.uniforms.iGlobalTime.value += dt/1000;
     this.animator.step();
     if (this.glitch) this.glitchComposer.render();
-    else this.renderer.render(this.scene, this.camera);
+    else this.renderer.render(this.scene, this.camera.camera);
   }
 }

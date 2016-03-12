@@ -32,7 +32,7 @@ export class World {
     this.phys.world.step(dt / 1000);
     this.me.move(dt);
     this.worldObjects.forEach(x => x.up(this.display));
-    this.display.moveCamera(
+    this.display.camera.move(
       this.me.angle,
       this.me.keyb.up > 0,
       this.me.keyb.turn);
