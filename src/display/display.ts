@@ -10,6 +10,7 @@ import {Dust} from './objects/dust';
 import {GlitchEffect} from './sfx/glitch';
 import {spaceVertexShader, spaceFragmentShader} from './sfx/shaders';
 import {GameMessage} from '../engine/msg';
+import {Player} from './objects/player';
 
 export const SCALE = 50;
 
@@ -24,9 +25,9 @@ export class Display3D {
   camera: Camera;
   renderer: Renderer;
   animator: Animator;
-  playerMeshGeometry: THREE.OctahedronGeometry;
-  playerWire: any;//THREE.Mesh;
-  player: THREE.Object3D;
+  // playerMeshGeometry: THREE.OctahedronGeometry;
+  // playerWire: any;//THREE.Mesh;
+  player: Player;
   protoGalaxy: THREE.Mesh;
   morphingSphere: MorphingSphere;
   spaceMaterial: THREE.ShaderMaterial;
@@ -42,19 +43,24 @@ export class Display3D {
     this.scene.fog = new THREE.FogExp2(0xffffff, 0.004);
     this.camera = new Camera(resolution, this.animator);
     this.renderer = new Renderer(resolution);
-
     this.container = new THREE.Object3D();
     this.scene.add(this.container);
     this.scene.add(new THREE.AmbientLight(0x999999));
-
     this.glitch = new GlitchEffect(this.animator, resolution, this.renderer.renderer, this.scene, this.camera.camera);
     this.initSpaceMaterial(resolution);
     this.initPlayer();
-    this.camera.target = this.player;
     this.initProtoGalaxy();
     this.initWallMaterial();
     this.morphingSphere = new MorphingSphere(this.animator, this.container);
     this.dust = new Dust(this.animator, this.container);
+  }
+
+  private initPlayer(): void {
+    this.player = new Player(this.animator, this.spaceMaterial);
+    this.scene.add(this.player.container);
+    this.camera.target = this.player.container;
+    this.finalHead = new Head(this.spaceMaterial);
+    this.finalHead.load().then(() => this.player.initWire(this.finalHead));
   }
 
 
@@ -83,44 +89,6 @@ export class Display3D {
         fogColor: { type: "c", value: new THREE.Vector3() },
       },
       fog: true
-    });
-  }
-
-  initPlayer(): void{
-    var playerSphere = new THREE.Mesh(
-      new THREE.SphereGeometry(SCALE/8, 16, 16),
-      this.spaceMaterial
-    );
-
-    this.player = new THREE.Object3D();
-    this.player.position.y = 0;
-    this.player.add(playerSphere);
-    this.scene.add(this.player);
-
-    this.finalHead = new Head(this.spaceMaterial);
-    this.finalHead.load().then(() => {
-      this.finalHead.lowpoly(6);
-
-      let meshGeometry = new THREE.OctahedronGeometry(2.33, 0);
-      meshGeometry.morphTargets.push({name: "head", vertices: this.finalHead.getMorphTargets(meshGeometry.vertices.length)});
-
-      this.playerWire = new THREE.Mesh(
-        meshGeometry,
-        new THREE.MeshBasicMaterial({color: 0xffffff, wireframe: true, morphTargets: true})
-      );
-
-      this.playerWire.scale.set(SCALE / 7, SCALE / 7, SCALE / 7);
-      this.player.add(this.playerWire);
-
-      this.animator.play({
-        func: dt => {
-          this.player.position.y = Math.sin(dt*Math.PI*2)*SCALE/16;
-          this.playerWire.rotation.z = dt*Math.PI;
-        },
-        duration: 2500,
-        loop: true,
-        object: this.player
-      });      
     });
   }
 
@@ -217,7 +185,7 @@ export class Display3D {
 
 
   playFinal(blockGameplay: () => any, cameraq: number, msg: GameMessage): void{
-    
+/*    
     this.animator.play({duration:3000})
       .then(()=>this.glitch.play(200))
       .then(()=>this.animator.play({duration:1500}))
@@ -313,7 +281,7 @@ export class Display3D {
             if (updated) this.glitch.play(70);
           },
           duration: 1000, timer: true, loop: true});
-     });
+     });*/
   }
 
   render(dt: number): void {

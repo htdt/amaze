@@ -36,10 +36,10 @@ export class Head {
   }
 
   public load(): Promise<any> {
-    return Promise.all([this.loadMap(), this.loadObject()]);
+    return Promise.all([this.loadMap(), this.loadObject()]).then(() => this.postLoad());
   }
 
-  public getMorphTargets(n): THREE.Vector3[] {
+  public getMorphTargets(n: number): THREE.Vector3[] {
     return this.originalGeometry.vertices.slice(0, n);
   }
 
@@ -71,16 +71,16 @@ export class Head {
         this.geometry = geometry;
         this.originalGeometry = geometry.clone();
         this.mesh = new THREE.Mesh(this.geometry, this.materials[HeadMaterials.Wire]);
-        this.initMesh();
-        this.colorize();
         resolve();
       });
     });
   }
 
-  private initMesh(): void {
+  private postLoad(): void {
     this.mesh.scale.set(SCALE / 7, SCALE / 7, SCALE / 7);
     this.mesh.position.y = -SCALE * .33;
+    this.colorize();
+    this.lowpoly(6);
   }
 
   private colorize(): void {

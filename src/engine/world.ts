@@ -21,7 +21,7 @@ export class World {
     this.display = new Display3D();
     this.maze = EllerMaze(10, 10);
     this.msg = new GameMessage();
-    this.me = new Player(this.display.player, this.phys.player, this.getRandomPosition());
+    this.me = new Player(this.display.player.container, this.phys.player, this.getRandomPosition());
     this.worldObjects = [this.me];
     this.buildWallsAndFloor();
     this.addTarget(this.getRandomPosition());
