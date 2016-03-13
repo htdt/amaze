@@ -96,7 +96,7 @@ export class World {
   private addGalaxy(obj: WorldObject): Promise<any> {
     let pos = obj.view.position.clone();
     let physPos = [obj.body.position[0], obj.body.position[1]];
-    return this.display.glitchMe(100).then(() => {
+    return this.display.glitch.play(100).then(() => {
       let {animation, view } = this.display.createGalaxy(pos);
       return animation.then(() => {
         let body = this.phys.createGalaxy(physPos);
