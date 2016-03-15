@@ -30,9 +30,8 @@ export class Final {
       this.display.glitch.play(700).then(() => {
         this.display.rmContainer();
         this.msg.hide();
-      })
-      .then(() => this.delay(1000))
-      .then(() => {
+        return this.delay(1000);
+      }).then(() => {
         this.camera.final(5000);
         return this.player.final(5000);
       })

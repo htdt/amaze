@@ -36,9 +36,8 @@ export class Display3D {
     this.animator = new Animator();
     this.camera = new Camera(resolution, this.animator);
     this.renderer = new Renderer(resolution);
-    this.container = new THREE.Object3D();
+    this.initSceneAndContainer();
     this.glitch = new GlitchEffect(this.animator, resolution, this.renderer.renderer, this.scene, this.camera.camera);
-    this.initScene();
     this.initSpaceMaterial(resolution);
     this.initPlayer();
     this.initProtoGalaxy();
@@ -51,10 +50,11 @@ export class Display3D {
     this.scene.remove(this.container);
   }
 
-  private initScene(): void {
+  private initSceneAndContainer(): void {
     this.scene = new THREE.Scene();
     this.scene.fog = new THREE.FogExp2(0xffffff, 0.004);
     this.scene.add(new THREE.AmbientLight(0x999999));
+    this.container = new THREE.Object3D();
     this.scene.add(this.container);
   }
 
