@@ -76,9 +76,7 @@ export class MorphingSphere {
         if (Math.random() > .7) {
           this.computeRadiuses(dt);
           generateSphere(this.vertices, SECTORS_I, SECTORS_K, this.radiuses);
-          /* tslint:disable:no-string-literal */
-          this.geometry.attributes['position'].needsUpdate = true;
-          /* tslint:enable:no-string-literal */
+          (<any>this.geometry).attributes.position.needsUpdate = true;
           this.geometry.computeVertexNormals();
         }
       },

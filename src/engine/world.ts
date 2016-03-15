@@ -1,4 +1,5 @@
 import {Display3D} from '../display/display';
+import {Final} from '../display/core/final';
 import {Physics} from './physics';
 import {EllerMaze} from './ellermaze';
 import {GameMessage} from './msg';
@@ -14,7 +15,8 @@ export class World {
   private prevLoopTS: number;
   private worldObjects: WorldObject[];
   private msg: GameMessage;
-  private fin: boolean = false;
+  private stoped: boolean = false;
+  private final: Final;
 
   constructor() {
     this.phys = new Physics();
@@ -22,6 +24,7 @@ export class World {
     this.maze = EllerMaze(10, 10);
     this.msg = new GameMessage();
     this.me = new Player(this.display.player.container, this.phys.player, this.getRandomPosition());
+    this.final = new Final(this.display, this.msg);
     this.worldObjects = [this.me];
     this.buildWallsAndFloor();
     this.addTarget(this.getRandomPosition());
@@ -41,7 +44,7 @@ export class World {
   private mainLoop(ts = null): void {
     let dt = this.prevLoopTS ? ts - this.prevLoopTS : 1000 / 60;
     if (dt > 100) dt = 100;
-    if (!this.fin) this.gameStep(dt);
+    if (!this.stoped) this.gameStep(dt);
     this.display.render(dt);
     this.prevLoopTS = ts;
     requestAnimationFrame(x => this.mainLoop(x));
@@ -108,6 +111,9 @@ export class World {
   private scorePoint(): void {
     if (this.msg.next()) this.addTarget(this.getRandomPosition());
     else
-      this.display.playFinal(() => this.fin = true, this.me.angle, this.msg);
+      this.final.into().then(() => {
+        this.stoped = true;
+        this.final.play();
+      });
   }
 }

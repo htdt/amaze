@@ -5,6 +5,7 @@ export class Camera {
   public camera: THREE.PerspectiveCamera;
   public target: THREE.Object3D;
   private radius: number = 10;
+  private angle: number = 0;
   private angleZ: number = 0;
 
   constructor(
@@ -18,19 +19,20 @@ export class Camera {
   }
 
   public move(angle: number, up: boolean, turn: number): void {
+    this.angle = angle;
     this.updateEasing(up, turn);
-    this.updateCamera(angle);
+    this.updateCamera();
   }
 
-  public final(duration: number, angle: number): Promise<any> {
+  public final(duration: number): Promise<any> {
     let y = SCALE * (this.radius + .5);
     let y2 = SCALE * 1.25;
     return this.animator.play({
       func: dt => {
         dt = -2 * dt * dt * (2 * dt - 3) / 2; // easing
         this.radius = dt + 2;
-        this.camera.position.x = this.target.position.x - Math.cos(angle * (1 - dt)) * SCALE * this.radius;
-        this.camera.position.z = this.target.position.z - Math.sin(angle * (1 - dt)) * SCALE * this.radius;
+        this.camera.position.x = this.target.position.x - Math.cos(this.angle * (1 - dt)) * SCALE * this.radius;
+        this.camera.position.z = this.target.position.z - Math.sin(this.angle * (1 - dt)) * SCALE * this.radius;
         this.camera.position.y = y * (1 - dt);
         this.camera.lookAt(new THREE.Vector3(
           this.target.position.x, y2 * (1 - dt), this.target.position.z));
@@ -55,9 +57,9 @@ export class Camera {
     if (turn == 0 && Math.abs(this.angleZ) > 0) this.angleZ *= .9;
   }
 
-  private updateCamera(angle: number): void {
-    this.camera.position.x = this.target.position.x - Math.cos(angle) * SCALE * this.radius;
-    this.camera.position.z = this.target.position.z - Math.sin(angle) * SCALE * this.radius;
+  private updateCamera(): void {
+    this.camera.position.x = this.target.position.x - Math.cos(this.angle) * SCALE * this.radius;
+    this.camera.position.z = this.target.position.z - Math.sin(this.angle) * SCALE * this.radius;
     this.camera.position.y = SCALE * (this.radius + .5);
     this.camera.lookAt(new THREE.Vector3(
       this.target.position.x, SCALE * 1.25, this.target.position.z));

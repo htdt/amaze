@@ -4,12 +4,10 @@ import {Animator} from './core/animator';
 import {Camera} from './core/camera';
 import {Renderer} from './core/renderer';
 import {sphericalTo3d} from './core/math';
-import {HeadMaterials, Head} from './objects/head';
 import {MorphingSphere} from './objects/morphing-sphere';
 import {Dust} from './objects/dust';
 import {GlitchEffect} from './sfx/glitch';
 import {spaceVertexShader, spaceFragmentShader} from './sfx/shaders';
-import {GameMessage} from '../engine/msg';
 import {Player} from './objects/player';
 
 export const SCALE = 50;
@@ -25,13 +23,10 @@ export class Display3D {
   camera: Camera;
   renderer: Renderer;
   animator: Animator;
-  // playerMeshGeometry: THREE.OctahedronGeometry;
-  // playerWire: any;//THREE.Mesh;
   player: Player;
   protoGalaxy: THREE.Mesh;
   morphingSphere: MorphingSphere;
   spaceMaterial: THREE.ShaderMaterial;
-  finalHead: Head;
   wallMaterial: THREE.MeshLambertMaterial;
   dust: Dust;
   glitch: GlitchEffect;
@@ -39,14 +34,11 @@ export class Display3D {
   constructor() {
     let resolution = new THREE.Vector2(window.innerWidth, window.innerHeight);
     this.animator = new Animator();
-    this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.FogExp2(0xffffff, 0.004);
     this.camera = new Camera(resolution, this.animator);
     this.renderer = new Renderer(resolution);
     this.container = new THREE.Object3D();
-    this.scene.add(this.container);
-    this.scene.add(new THREE.AmbientLight(0x999999));
     this.glitch = new GlitchEffect(this.animator, resolution, this.renderer.renderer, this.scene, this.camera.camera);
+    this.initScene();
     this.initSpaceMaterial(resolution);
     this.initPlayer();
     this.initProtoGalaxy();
@@ -55,12 +47,21 @@ export class Display3D {
     this.dust = new Dust(this.animator, this.container);
   }
 
+  public rmContainer(): void {
+    this.scene.remove(this.container);
+  }
+
+  private initScene(): void {
+    this.scene = new THREE.Scene();
+    this.scene.fog = new THREE.FogExp2(0xffffff, 0.004);
+    this.scene.add(new THREE.AmbientLight(0x999999));
+    this.scene.add(this.container);
+  }
+
   private initPlayer(): void {
     this.player = new Player(this.animator, this.spaceMaterial);
     this.scene.add(this.player.container);
     this.camera.target = this.player.container;
-    this.finalHead = new Head(this.spaceMaterial);
-    this.finalHead.load().then(() => this.player.initWire(this.finalHead));
   }
 
 
@@ -180,108 +181,6 @@ export class Display3D {
       }),
       view: g
     }
-  }
-
-
-
-  playFinal(blockGameplay: () => any, cameraq: number, msg: GameMessage): void{
-/*    
-    this.animator.play({duration:3000})
-      .then(()=>this.glitch.play(200))
-      .then(()=>this.animator.play({duration:1500}))
-      .then(()=>this.glitch.play(200))
-      .then(()=>this.animator.play({duration:1500}))
-      .then(()=>this.glitch.play(700))
-      .then(()=>this.animator.play({duration:1500}))
-      .then(blockGameplay)
-      .then(()=>this.glitch.play(700))
-      .then(()=>{
-        this.scene.remove(this.container);
-        msg.hide();
-      })
-      .then(()=>this.animator.play({duration:1000}))
-      .then(()=>{  
-        this.animator.stop(this.player);
-        
-        let currotz = this.playerWire.rotation.z;
-        this.animator.play({
-          func: dt => this.playerWire.rotation.z = currotz*(1-dt)
-        });
-
-        var rotateme = () => {
-          let startq = this.player.rotation.y;
-          let duration = Math.pow(Math.random(),2)*1500;
-          let direction = Math.random()>.2 ? 1 : -1;
-
-          this.animator.play({
-            func: dt => this.player.rotation.y = startq + dt/5*direction,
-            duration: duration
-          }).then(()=>rotateme());
-        }
-        rotateme();
-        
-        this.camera.final(5000, cameraq);
-        return this.animator.play({
-            func: dt=>{
-              this.playerWire.morphTargetInfluences[0] = dt;
-              this.playerWire.position.y = -dt*SCALE*.33;
-              this.player.position.y = dt*SCALE*.7;
-              var d = dt*3.3+1;
-              this.player.scale.set(d,d,d);
-            },
-            duration:5000
-          });
-      })
-      .then(()=>{
-        this.player.remove(this.playerWire);
-        this.finalHead.show(this.player);
-
-        return this.animator.play({
-          func: d => this.finalHead.lowpoly(d*d * 994 + 6),
-          duration: 20000});
-      }).then(_=>{
-        
-        var light = new THREE.PointLight(0xffffff,.25);
-        // light.position.set(this.camera.position.x, this.camera.position.y, this.camera.position.z);
-        this.scene.add(light);
-
-        msg.final();
-        msg.show();
-
-        this.finalHead.setMaterial(HeadMaterials.Solid);
-        this.glitch.play(70);
-
-        this.animator.play({
-          func: _=> {
-            if (Math.random()>.93){
-              this.finalHead.lowpoly(Math.pow(Math.random(),2) * 994 + 6)
-              this.glitch.play(200);
-            }
-          },
-          duration: 1000, timer: true, loop: true});
-
-        this.animator.play({
-          func: _ => {
-            let rnd = Math.random();
-            let updated = false;
-
-            if (rnd < .075) {
-              msg.show();
-              updated = this.finalHead.setMaterial(HeadMaterials.Solid);
-            }
-            else if (rnd > .075 && rnd < .15) {
-              msg.hide();
-              updated = this.finalHead.setMaterial(HeadMaterials.Wire);
-            }
-            else if (rnd > .15 && rnd < .225) {
-              msg.show();
-              updated = this.finalHead.setMaterial(HeadMaterials.Space);
-            }
-
-            if (updated) this.glitch.play(70);
-          },
-          duration: 1000, timer: true, loop: true});
-     });*/
   }
 
   render(dt: number): void {
