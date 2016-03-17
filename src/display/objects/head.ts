@@ -32,6 +32,7 @@ export class Head {
   public setMaterial(newMaterial: HeadMaterials): boolean {
     if (this.currentMaterial == newMaterial) return false;
     this.mesh.material = this.materials[newMaterial];
+    this.currentMaterial = newMaterial;
     return true;
   }
 
