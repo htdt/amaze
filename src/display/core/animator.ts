@@ -18,11 +18,10 @@ export class Animator {
     loop = false,
     timer = false,
   }): Promise<any> {
-    let animation = this.animation;
-    return new Promise(function(resolve, reject){
-      if (object && animation.filter(o => o.object == object).length)
+    return new Promise((resolve, reject) => {
+      if (object && this.animation.filter(o => o.object == object).length)
         return reject('object already in use');
-      animation.push({start: Date.now(), func, duration, resolve, object, loop, timer});
+      this.animation.push({start: Date.now(), func, duration, resolve, object, loop, timer});
     }).catch(error => null);
   }
 
