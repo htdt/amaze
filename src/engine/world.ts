@@ -26,9 +26,18 @@ export class World {
     this.me = new Player(this.display.player.container, this.phys.player, this.getRandomPosition());
     this.final = new Final(this.display, this.msg);
     this.worldObjects = [this.me];
-    this.addTarget();
     this.buildWallsAndFloor();
+    this.addTarget();
     this.mainLoop();
+  }
+
+  private mainLoop(ts = null): void {
+    let dt = this.prevLoopTS ? ts - this.prevLoopTS : 1000 / 60;
+    if (dt > 100) dt = 100;
+    if (!this.stoped) this.gameStep(dt);
+    this.display.render(dt);
+    this.prevLoopTS = ts;
+    requestAnimationFrame(x => this.mainLoop(x));
   }
 
   private gameStep(dt: number): void {
@@ -39,15 +48,6 @@ export class World {
       this.me.angle,
       this.me.keyb.up > 0,
       this.me.keyb.turn);
-  }
-
-  private mainLoop(ts = null): void {
-    let dt = this.prevLoopTS ? ts - this.prevLoopTS : 1000 / 60;
-    if (dt > 100) dt = 100;
-    if (!this.stoped) this.gameStep(dt);
-    this.display.render(dt);
-    this.prevLoopTS = ts;
-    requestAnimationFrame(x => this.mainLoop(x));
   }
 
   private addTarget(): void {

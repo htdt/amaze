@@ -87,7 +87,7 @@ export class Head {
   private colorize(): void {
     let len = this.geometry.faces.length;
     for (let i = 0; i < len; i++)
-      this.geometry.faces[i].color.setHSL(0, 0, Math.random() / 5 + .8);
+      this.geometry.faces[i].color.setHSL(0, 0, Math.random() * .2 + .8);
     this.geometry.colorsNeedUpdate = true;
   }
 }

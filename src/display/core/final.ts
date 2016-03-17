@@ -37,19 +37,13 @@ export class Final {
       })
       .then(() => this.fadeinHeadPoly(20000))
       .then(() => {
-        this.addLight();
+        this.display.addFinalLight();
         this.msg.final();
         this.msg.show();
         this.display.glitch.play(70);
         this.rndHeadPoly();
         this.rndHeadMaterial();
      });
-  }
-
-  private addLight(): void {
-    let light = new THREE.PointLight(0xffffff, .25);
-    light.position.copy(this.camera.camera.position);
-    this.display.scene.add(light);
   }
 
   private fadeinHeadPoly(duration: number): Promise<any> {
