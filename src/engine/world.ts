@@ -3,9 +3,9 @@ import {Final} from '../display/core/final';
 import {Physics} from './physics';
 import {EllerMaze} from './ellermaze';
 import {GameMessage} from './msg';
-import {WorldObject} from './worldobject';
-import {Vector2d} from './worldobject';
+import {WorldObject, Vector2d} from './worldobject';
 import {Player} from './player';
+import {Target} from './target';
 
 export class World {
   private maze: boolean[][];
@@ -26,8 +26,8 @@ export class World {
     this.me = new Player(this.display.player.container, this.phys.player, this.getRandomPosition());
     this.final = new Final(this.display, this.msg);
     this.worldObjects = [this.me];
+    this.addTarget();
     this.buildWallsAndFloor();
-    this.addTarget(this.getRandomPosition());
     this.mainLoop();
   }
 
@@ -50,6 +50,15 @@ export class World {
     requestAnimationFrame(x => this.mainLoop(x));
   }
 
+  private addTarget(): void {
+    let target = new Target(this.phys, this.display, this.getRandomPosition());
+    target.onHit().then(({animation, galaxy}) => {
+      this.worldObjects.push(galaxy);
+      animation.then(() => this.scorePoint(target));
+    });
+    this.worldObjects.push(target);
+  }
+
   private getRandomPosition(): Vector2d {
     let w = this.maze[0].length, h = this.maze.length, x, y;
     do {
@@ -70,50 +79,19 @@ export class World {
     this.display.addEnvironment(w, h);
   }
 
-  private addTarget(v: Vector2d): void {
-      let p = this.phys.addTarget(v.x, v.y);
-      let o = this.display.morphingSphere.add(v.x, v.y);
-      let newobj = new WorldObject(o, p);
-      this.worldObjects.push(newobj);
-      this.onTargetHit(newobj);
-  }
-
-  private onTargetHit(obj: WorldObject): void {
-    this.phys.onHit({
-      obj1: obj.body,
-      obj2: this.phys.player,
-      once: true,
-      func: () => this.distroyTarget(obj).then(() => this.scorePoint()),
-    });
-  }
-
-  private distroyTarget(obj: WorldObject): Promise<any> {
-    let i = this.worldObjects.map(o => o.view.id).indexOf(obj.view.id);
-    if (i >= 0) this.worldObjects.splice(i, 1);
-    this.phys.world.removeBody(obj.body);
-    this.display.container.remove(obj.view);
-    this.display.animator.stop(obj.view);
-    return this.addGalaxy(obj);
-  }
-
-  private addGalaxy(obj: WorldObject): Promise<any> {
-    let pos = obj.view.position.clone();
-    let physPos = [obj.body.position[0], obj.body.position[1]];
-    return this.display.glitch.play(100).then(() => {
-      let {animation, view } = this.display.createGalaxy(pos);
-      return animation.then(() => {
-        let body = this.phys.createGalaxy(physPos);
-        this.worldObjects.push(new WorldObject(view, body));
-      });
-    });
-  }
-
-  private scorePoint(): void {
-    if (this.msg.next()) this.addTarget(this.getRandomPosition());
-    else
+  private scorePoint(oldTarget: Target): void {
+    if (this.msg.next()) {
+      this.rmWorldObject(oldTarget);
+      this.addTarget();
+    } else
       this.final.into().then(() => {
         this.stoped = true;
         this.final.play();
       });
+  }
+
+  private rmWorldObject(obj: WorldObject): void {
+    let i = this.worldObjects.map(o => o.view.id).indexOf(obj.view.id);
+    if (i >= 0) this.worldObjects.splice(i, 1);
   }
 }

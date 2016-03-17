@@ -41,6 +41,10 @@ export class Animator {
     }
   }
 
+  public delay(n: number): Promise<any> {
+    return this.play({duration: n});
+  }
+
   private onEnd(i: number): void {
     if (this.animation[i].loop) {
       if (this.animation[i].timer) this.animation[i].func(1);

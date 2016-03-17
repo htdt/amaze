@@ -17,20 +17,20 @@ export class Final {
   }
 
   public into(): Promise<any> {
-    return this.delay(3000)
+    return this.animator.delay(3000)
       .then(() => this.display.glitch.play(200))
-      .then(() => this.delay(1500))
+      .then(() => this.animator.delay(1500))
       .then(() => this.display.glitch.play(200))
-      .then(() => this.delay(1500))
+      .then(() => this.animator.delay(1500))
       .then(() => this.display.glitch.play(700))
-      .then(() => this.delay(1500));
+      .then(() => this.animator.delay(1500));
   }
 
   public play(): void {
       this.display.glitch.play(700).then(() => {
         this.display.rmContainer();
         this.msg.hide();
-        return this.delay(1000);
+        return this.animator.delay(1000);
       }).then(() => {
         this.camera.final(5000);
         return this.player.final(5000);
@@ -93,9 +93,5 @@ export class Final {
       },
       duration: 1000, timer: true, loop: true,
     });
-  }
-
-  private delay(n: number): Promise<any> {
-    return this.animator.play({duration: n});
   }
 }

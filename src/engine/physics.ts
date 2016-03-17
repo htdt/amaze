@@ -70,7 +70,7 @@ export class Physics {
       {restitution : 1, stiffness : 500}));
     this.world.addContactMaterial(new p2.ContactMaterial(
       this.wallMaterial, this.galaxyMaterial,
-      {restitution : 1, stiffness : 100}));
+      {restitution : 1, stiffness : 50}));
     this.world.addContactMaterial(new p2.ContactMaterial(
       this.playerMaterial, this.galaxyMaterial,
       {restitution : 1, stiffness : 7}));

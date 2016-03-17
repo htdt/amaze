@@ -3,19 +3,14 @@
 import {Animator} from './core/animator';
 import {Camera} from './core/camera';
 import {Renderer} from './core/renderer';
-import {sphericalTo3d} from './core/math';
 import {MorphingSphere} from './objects/morphing-sphere';
 import {Dust} from './objects/dust';
+import {Galaxy} from './objects/galaxy';
 import {GlitchEffect} from './sfx/glitch';
 import {spaceVertexShader, spaceFragmentShader} from './sfx/shaders';
 import {Player} from './objects/player';
 
 export const SCALE = 50;
-
-interface GalaxyView {
-  animation: Promise<any>;
-  view: THREE.Mesh;
-}
 
 export class Display3D {
   scene: THREE.Scene;
@@ -24,7 +19,7 @@ export class Display3D {
   renderer: Renderer;
   animator: Animator;
   player: Player;
-  protoGalaxy: THREE.Mesh;
+  galaxy: Galaxy;
   morphingSphere: MorphingSphere;
   spaceMaterial: THREE.ShaderMaterial;
   wallMaterial: THREE.MeshLambertMaterial;
@@ -40,7 +35,7 @@ export class Display3D {
     this.glitch = new GlitchEffect(this.animator, resolution, this.renderer.renderer, this.scene, this.camera.camera);
     this.initSpaceMaterial(resolution);
     this.initPlayer();
-    this.initProtoGalaxy();
+    this.galaxy = new Galaxy(this.animator, this.spaceMaterial, this.container);
     this.initWallMaterial();
     this.morphingSphere = new MorphingSphere(this.animator, this.container);
     this.dust = new Dust(this.animator, this.container);
@@ -125,63 +120,6 @@ export class Display3D {
     displayObj.rotation.y = -physObj.angle;
   }
 
-  initProtoGalaxy(): void{
-    this.protoGalaxy = new THREE.Mesh(
-      new THREE.SphereGeometry(SCALE/1.25, 16, 16),
-      this.spaceMaterial
-    );
-  }
-
-  createGalaxy(pos: THREE.Vector3): GalaxyView{
-    var material = new THREE.LineBasicMaterial({
-      color: 0x666666,
-      linewidth: 1,
-      fog: true
-    });
-
-    var geometry = new THREE.Geometry();
-
-    for (let i=0;i<20;i++){
-      let a = Math.random()*Math.PI;
-      let b = Math.random()*Math.PI;
-      let s1 = Math.random()*SCALE/10;
-      let s2 = (Math.random()+.5)*SCALE;
-      geometry.vertices.push(
-        (new THREE.Vector3()).fromArray(sphericalTo3d(a, b, s1)),
-        (new THREE.Vector3()).fromArray(sphericalTo3d(a, b, s2))
-      );
-    }
-
-    var lines = new THREE.Line( geometry, material, THREE.LinePieces );
-    lines.position.set(pos.x, pos.y, pos.z);
-    this.scene.add( lines );
-
-    let g = this.protoGalaxy.clone();
-    g.position.set(pos.x, pos.y, pos.z);
-    this.container.add(g);
-
-    this.animator.play({
-      func: _ => this.glitch.play(1000),
-      duration: 1000,
-      timer: true,
-    });
-
-    return {
-      animation: this.animator.play({
-        func: dt => {
-          let ql = dt*50+1;
-          lines.scale.set(ql, ql, ql);
-          
-          let qg = dt*dt*dt;
-          g.scale.set(qg, qg, qg);
-        },
-        duration: 2000})
-      .then(() => {
-        this.scene.remove(lines);
-      }),
-      view: g
-    }
-  }
 
   render(dt: number): void {
     this.spaceMaterial.uniforms.iGlobalTime.value += dt / 1000;
