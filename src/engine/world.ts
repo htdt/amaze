@@ -15,7 +15,7 @@ export class World {
   private prevLoopTS: number;
   private worldObjects: WorldObject[];
   private msg: GameMessage;
-  private stoped: boolean = false;
+  private stopped: boolean = false;
   private final: Final;
 
   constructor() {
@@ -34,7 +34,7 @@ export class World {
   private mainLoop(ts = null): void {
     let dt = this.prevLoopTS ? ts - this.prevLoopTS : 1000 / 60;
     if (dt > 100) dt = 100;
-    if (!this.stoped) this.gameStep(dt);
+    if (!this.stopped) this.gameStep(dt);
     this.display.render(dt);
     this.prevLoopTS = ts;
     requestAnimationFrame(x => this.mainLoop(x));
@@ -54,7 +54,8 @@ export class World {
     let target = new Target(this.phys, this.display, this.getRandomPosition());
     target.onHit().then(({animation, galaxy}) => {
       this.worldObjects.push(galaxy);
-      animation.then(() => this.scorePoint(target));
+      let end = !this.msg.next();
+      animation.then(() => this.nextLevel(end, target));
     });
     this.worldObjects.push(target);
   }
@@ -79,15 +80,15 @@ export class World {
     this.display.addEnvironment(w, h);
   }
 
-  private scorePoint(oldTarget: Target): void {
-    if (this.msg.next()) {
+  private nextLevel(isEnd: boolean, oldTarget: Target): void {
+    if (!isEnd) {
       this.rmWorldObject(oldTarget);
       this.addTarget();
-    } else
-      this.final.into().then(() => {
-        this.stoped = true;
-        this.final.play();
-      });
+    }
+    else this.final.into().then(() => {
+      this.stopped = true;
+      this.final.play();
+    });
   }
 
   private rmWorldObject(obj: WorldObject): void {
