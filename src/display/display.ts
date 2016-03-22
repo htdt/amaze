@@ -10,9 +10,10 @@ import {GlitchEffect} from './sfx/glitch';
 import {spaceVertexShader, spaceFragmentShader} from './sfx/shaders';
 import {Player} from './objects/player';
 import {Final} from './core/final';
-import {Audio} from '../audio/audio';
+import {Audio} from '../senses/audio';
 import {GameMessage} from '../engine/msg';
-import {initUI} from '../ui';
+import {initUI} from '../senses/ui';
+import {isMobile} from '../controls/controls';
 
 export const SCALE = 50;
 
@@ -35,14 +36,16 @@ export class Display3D {
 
   constructor(msg: GameMessage) {
     let resolution = new THREE.Vector2(window.innerWidth, window.innerHeight);
+    let pixelRatio = window.devicePixelRatio;
     this.animator = new Animator();
     this.camera = new Camera(resolution, this.animator);
-    this.renderer = new Renderer(resolution);
+    this.renderer = new Renderer(resolution, pixelRatio);
     this.scene = this.initScene();
     this.container = new THREE.Object3D();
     this.scene.add(this.container);
     this.audio = new Audio(this.animator, this.scene);
-    this.glitch = new GlitchEffect(this.animator, resolution, this.renderer.renderer, this.scene, this.camera.camera, this.audio);
+    this.glitch = new GlitchEffect(this.animator, resolution, this.renderer.renderer,
+      this.scene, this.camera.camera, this.audio, pixelRatio);
     this.spaceMaterial = this.initSpaceMaterial(resolution);
     this.player = this.initPlayer(this.spaceMaterial);
     this.galaxy = new Galaxy(this.animator, this.spaceMaterial, this.container, this.audio);

@@ -4,7 +4,7 @@ import {GameMessage} from '../../engine/msg';
 import {Player} from '../objects/player';
 import {Camera} from './camera';
 import {HeadMaterials} from '../objects/head';
-import {Audio} from '../../audio/audio';
+import {Audio} from '../../senses/audio';
 
 export class Final {
   private player: Player;

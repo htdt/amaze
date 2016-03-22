@@ -1,7 +1,7 @@
 import {SCALE} from '../display';
 import {Animator} from '../core/animator';
 import {sphericalTo3d} from '../core/math';
-import {Audio} from '../../audio/audio';
+import {Audio} from '../../senses/audio';
 
 const ANIMATION_DURATION = 2000;
 

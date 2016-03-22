@@ -1,7 +1,8 @@
 import {Animator} from '../core/animator';
 import {SCALE} from '../display';
 import {generateSphere} from './sphere';
-import {Audio} from '../../audio/audio';
+import {Audio} from '../../senses/audio';
+import {isIOS} from '../../controls/controls';
 
 const SECTORS_I = 10;
 const SECTORS_K = 10;
@@ -39,7 +40,7 @@ export class MorphingSphere {
 
   public onDestroy(view: THREE.Object3D) {
     this.animator.stop(view);
-    this.sound.stop();
+    if (!isIOS()) this.sound.stop();
     this.audio.hit.play();
   }
 

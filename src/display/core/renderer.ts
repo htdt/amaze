@@ -1,9 +1,9 @@
 export class Renderer {
   public renderer: THREE.WebGLRenderer;
 
-  constructor(resolution) {
+  constructor(resolution: THREE.Vector2, pixelRatio: number) {
     this.renderer = new THREE.WebGLRenderer();
-    this.renderer.setPixelRatio(window.devicePixelRatio);
+    this.renderer.setPixelRatio(pixelRatio);
     this.renderer.setSize(resolution.x, resolution.y);
     document.body.appendChild(this.renderer.domElement);
     window.addEventListener('resize', () =>

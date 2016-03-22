@@ -1,8 +1,7 @@
-// https://github.com/mrdoob/three.js/blob/master/examples/misc_sound.html
-
 import {Animator} from '../display/core/animator';
 import {Camera} from '../display/core/camera';
 import {Player} from '../display/objects/player';
+import {isIOS} from '../controls/controls';
 
 import '../vendor/audio/Audio';
 import '../vendor/audio/AudioAnalyser';
@@ -62,9 +61,11 @@ export class Audio {
   }
 
   public stopAll(): void {
-    this.sounds.forEach(x => x.stop());
-    this.bgWind.stop();
-    this.bgBreath.stop();
+    if (!isIOS()) {
+      this.sounds.forEach(x => x.stop());
+      this.bgWind.stop();
+      this.bgBreath.stop();
+    }
     this.stopped = true;
   }
 

@@ -1,4 +1,4 @@
-import {Audio} from './audio/audio';
+import {Audio} from './audio';
 
 function fullscreen(el) {
   if (el.requestFullscreen) {

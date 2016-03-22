@@ -5,6 +5,7 @@ import {GameMessage} from './msg';
 import {WorldObject, Vector2d} from './worldobject';
 import {Player} from './player';
 import {Target} from './target';
+import {isMobile} from '../controls/controls';
 
 export class World {
   private maze: boolean[][];
@@ -20,7 +21,7 @@ export class World {
     this.msg = new GameMessage();
     this.phys = new Physics();
     this.display = new Display3D(this.msg);
-    this.maze = EllerMaze(12, 12);
+    this.maze = isMobile() ? EllerMaze(9, 9) : EllerMaze(12, 12);
     this.me = new Player(this.display.player.container, this.phys.player, this.getRandomPosition());
     this.worldObjects = [this.me];
     this.buildWallsAndFloor();
