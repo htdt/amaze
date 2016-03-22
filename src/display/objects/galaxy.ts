@@ -1,6 +1,7 @@
 import {SCALE} from '../display';
 import {Animator} from '../core/animator';
 import {sphericalTo3d} from '../core/math';
+import {Audio} from '../../audio/audio';
 
 const ANIMATION_DURATION = 2000;
 
@@ -15,7 +16,8 @@ export class Galaxy {
   constructor(
     private animator: Animator,
     private spaceMaterial: THREE.ShaderMaterial,
-    private container: THREE.Object3D
+    private container: THREE.Object3D,
+    private audio: Audio
   ) {
     this.proto = new THREE.Mesh(
       new THREE.SphereGeometry(SCALE / 1.25, 16, 16), spaceMaterial);
@@ -25,6 +27,9 @@ export class Galaxy {
     this.explodeLines(pos);
     let g = this.proto.clone();
     g.position.set(pos.x, pos.y, pos.z);
+    let s = this.audio.getPositionalAudio('galaxies');
+    s.setVolume(2.5);
+    g.add(s);
     this.container.add(g);
     return {
       animation: this.animator.play({

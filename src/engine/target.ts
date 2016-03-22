@@ -24,8 +24,8 @@ export class Target extends WorldObject {
 
   private destroy(): Promise<any> {
     this.phys.world.removeBody(this.body);
+    this.display.morphingSphere.onDestroy(this.view);
     this.display.container.remove(this.view);
-    this.display.animator.stop(this.view);
     return this.addGalaxy();
   }
 
@@ -33,7 +33,7 @@ export class Target extends WorldObject {
     let pos = this.view.position.clone();
     let physPos = [this.body.position[0], this.body.position[1]];
     return this.display.glitch.play(100).then(() => {
-      this.display.animator.delay(1000).then(() => this.display.glitch.play(1000));
+      this.display.delay(1250).then(() => this.display.glitch.play(750));
       let {animation, view} = this.display.galaxy.add(pos);
       return {
         animation,

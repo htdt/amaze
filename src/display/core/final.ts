@@ -4,20 +4,25 @@ import {GameMessage} from '../../engine/msg';
 import {Player} from '../objects/player';
 import {Camera} from './camera';
 import {HeadMaterials} from '../objects/head';
+import {Audio} from '../../audio/audio';
 
 export class Final {
-  private animator: Animator;
   private player: Player;
   private camera: Camera;
 
-  constructor(private display: Display3D, private msg: GameMessage) {
-    this.animator = this.display.animator;
+  constructor(
+    private display: Display3D,
+    private animator: Animator,
+    private msg: GameMessage,
+    private audio: Audio
+  ) {
     this.player = this.display.player;
     this.camera = this.display.camera;
   }
 
   public into(): Promise<any> {
-    return this.animator.delay(3000)
+    this.audio.stopAll();
+    return this.animator.delay(5000)
       .then(() => this.display.glitch.play(200))
       .then(() => this.animator.delay(1500))
       .then(() => this.display.glitch.play(200))
@@ -30,6 +35,7 @@ export class Final {
       this.display.glitch.play(700).then(() => {
         this.display.rmContainer();
         this.msg.hide();
+        this.audio.bgFinal.play();
         return this.animator.delay(1000);
       }).then(() => {
         this.camera.final(5000);

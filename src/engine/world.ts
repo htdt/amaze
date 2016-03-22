@@ -1,5 +1,4 @@
 import {Display3D} from '../display/display';
-import {Final} from '../display/core/final';
 import {Physics} from './physics';
 import {EllerMaze} from './ellermaze';
 import {GameMessage} from './msg';
@@ -16,15 +15,13 @@ export class World {
   private worldObjects: WorldObject[];
   private msg: GameMessage;
   private stopped: boolean = false;
-  private final: Final;
 
   constructor() {
-    this.phys = new Physics();
-    this.display = new Display3D();
-    this.maze = EllerMaze(10, 10);
     this.msg = new GameMessage();
+    this.phys = new Physics();
+    this.display = new Display3D(this.msg);
+    this.maze = EllerMaze(12, 12);
     this.me = new Player(this.display.player.container, this.phys.player, this.getRandomPosition());
-    this.final = new Final(this.display, this.msg);
     this.worldObjects = [this.me];
     this.buildWallsAndFloor();
     this.addTarget();
@@ -43,7 +40,7 @@ export class World {
   private gameStep(dt: number): void {
     this.phys.world.step(dt / 1000);
     this.me.move(dt);
-    this.worldObjects.forEach(x => x.up(this.display));
+    this.worldObjects.forEach(x => x.update(this.display));
     this.display.camera.move(
       this.me.angle,
       this.me.keyb.up > 0,
@@ -85,9 +82,9 @@ export class World {
       this.rmWorldObject(oldTarget);
       this.addTarget();
     }
-    else this.final.into().then(() => {
+    else this.display.final.into().then(() => {
       this.stopped = true;
-      this.final.play();
+      this.display.final.play();
     });
   }
 

@@ -9,6 +9,9 @@ import {Galaxy} from './objects/galaxy';
 import {GlitchEffect} from './sfx/glitch';
 import {spaceVertexShader, spaceFragmentShader} from './sfx/shaders';
 import {Player} from './objects/player';
+import {Final} from './core/final';
+import {Audio} from '../audio/audio';
+import {GameMessage} from '../engine/msg';
 
 export const SCALE = 50;
 
@@ -18,16 +21,18 @@ export class Display3D {
   public camera: Camera;
   public morphingSphere: MorphingSphere;
   public container: THREE.Object3D;
-  public animator: Animator;
   public glitch: GlitchEffect;
+  public final: Final;
 
+  private animator: Animator;
   private scene: THREE.Scene;
   private renderer: Renderer;
   private spaceMaterial: THREE.ShaderMaterial;
   private wallMaterial: THREE.MeshLambertMaterial;
   private dust: Dust;
+  private audio: Audio;
 
-  constructor() {
+  constructor(msg: GameMessage) {
     let resolution = new THREE.Vector2(window.innerWidth, window.innerHeight);
     this.animator = new Animator();
     this.camera = new Camera(resolution, this.animator);
@@ -35,18 +40,22 @@ export class Display3D {
     this.scene = this.initScene();
     this.container = new THREE.Object3D();
     this.scene.add(this.container);
-    this.glitch = new GlitchEffect(this.animator, resolution, this.renderer.renderer, this.scene, this.camera.camera);
+    this.audio = new Audio(this.animator, this.scene);
+    this.glitch = new GlitchEffect(this.animator, resolution, this.renderer.renderer, this.scene, this.camera.camera, this.audio);
     this.spaceMaterial = this.initSpaceMaterial(resolution);
     this.player = this.initPlayer(this.spaceMaterial);
-    this.galaxy = new Galaxy(this.animator, this.spaceMaterial, this.container);
+    this.galaxy = new Galaxy(this.animator, this.spaceMaterial, this.container, this.audio);
     this.wallMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff, shading: THREE.FlatShading });
-    this.morphingSphere = new MorphingSphere(this.animator, this.container);
+    this.morphingSphere = new MorphingSphere(this.animator, this.container, this.audio);
     this.dust = new Dust(this.animator, this.container);
+    this.final = new Final(this, this.animator, msg, this.audio);
     this.colorTransitionLoop();
   }
 
   public render(dt: number): void {
     this.spaceMaterial.uniforms.iGlobalTime.value += dt / 1000;
+    this.player.update(dt);
+    this.audio.update(this.player, this.camera);
     this.animator.step();
     if (!this.glitch.render()) this.renderer.render(this.scene, this.camera.camera);
   }
@@ -90,6 +99,8 @@ export class Display3D {
     displayObj.position.z = physObj.position[1] * SCALE;
     displayObj.rotation.y = -physObj.angle;
   }
+
+  public delay(n: number) { return this.animator.delay(n); }
 
   private initScene(): THREE.Scene {
     let scene = new THREE.Scene();

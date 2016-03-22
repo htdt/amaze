@@ -1,4 +1,5 @@
 import {Animator} from '../core/animator';
+import {Audio} from '../../audio/audio';
 
 import '../../vendor/glitch/CopyShader';
 import '../../vendor/glitch/DigitalGlitch';
@@ -17,7 +18,8 @@ export class GlitchEffect {
     resolution: THREE.Vector2,
     renderer: THREE.Renderer,
     scene: THREE.Scene,
-    camera: THREE.Camera
+    camera: THREE.Camera,
+    private audio: Audio
   ) {
     this.composer = new THREE.EffectComposer(renderer);
     this.composer.addPass(new THREE.RenderPass(scene, camera));
@@ -30,10 +32,11 @@ export class GlitchEffect {
       resolution.y * window.devicePixelRatio);
   }
 
-  public play(dt: number): Promise<any> {
+  public play(duration: number): Promise<any> {
     this.active = true;
+    this.audio.glitch(duration);
     return this.animator.play({
-      duration: dt,
+      duration,
       func: _ => this.active = false,
       timer: true,
     });

@@ -1,6 +1,7 @@
 import {Animator} from '../core/animator';
 import {SCALE} from '../display';
 import {generateSphere} from './sphere';
+import {Audio} from '../../audio/audio';
 
 const SECTORS_I = 10;
 const SECTORS_K = 10;
@@ -14,21 +15,32 @@ export class MorphingSphere {
   private vertices: Float32Array;
   private geometry: THREE.BufferGeometry;
   private mesh: THREE.Mesh;
+  private sound: THREE.PositionalAudio;
 
   constructor(
     private animator: Animator,
-    private container: THREE.Object3D
+    private container: THREE.Object3D,
+    private audio: Audio
   ) {
     this.init();
+    this.sound = audio.getPositionalAudio('morphing');
   }
 
   public add(x: number, y: number): THREE.Mesh {
     let s = this.mesh.clone();
     s.position.x = x * SCALE;
     s.position.z = y * SCALE;
+    s.add(this.sound);
+    if ((<any>this.sound).sourceType == 'buffer') this.sound.play();
     this.container.add(s);
     this.rotate(s);
     return s;
+  }
+
+  public onDestroy(view: THREE.Object3D) {
+    this.animator.stop(view);
+    this.sound.stop();
+    this.audio.hit.play();
   }
 
   private init(): void {

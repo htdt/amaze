@@ -5,8 +5,10 @@ import {Head} from './head';
 export class Player {
   public container: THREE.Object3D;
   public head: Head;
+  public rotationV: number = 0;
   private geometry: THREE.OctahedronGeometry;
   private wire: THREE.Mesh = null;
+  private prevY: number = null;
 
   constructor(private animator: Animator, spaceMaterial: THREE.ShaderMaterial) {
     this.container = new THREE.Object3D();
@@ -15,6 +17,12 @@ export class Player {
     this.runAnimation();
     this.head = new Head(spaceMaterial);
     this.head.load().then(() => this.initWire());
+  }
+
+  public update(dt: number): void {
+    if (this.prevY !== null)
+      this.rotationV = Math.abs(this.container.rotation.y - this.prevY) / dt;
+    this.prevY = this.container.rotation.y;
   }
 
   public final(n: number): Promise<any> {
