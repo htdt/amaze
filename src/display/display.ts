@@ -12,6 +12,7 @@ import {Player} from './objects/player';
 import {Final} from './core/final';
 import {Audio} from '../audio/audio';
 import {GameMessage} from '../engine/msg';
+import {initUI} from '../ui';
 
 export const SCALE = 50;
 
@@ -50,6 +51,7 @@ export class Display3D {
     this.dust = new Dust(this.animator, this.container);
     this.final = new Final(this, this.animator, msg, this.audio);
     this.colorTransitionLoop();
+    initUI(this.audio);
   }
 
   public render(dt: number): void {

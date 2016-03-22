@@ -19,11 +19,17 @@ export class Audio {
   private sounds: THREE.PositionalAudio[] = [];
   private listener: THREE.AudioListener;
   private stopped: boolean = false;
+  private muted: boolean = false;
 
   constructor(animator: Animator, scene: THREE.Scene) {
     this.listener = new THREE.AudioListener();
     scene.add(this.listener);
     this.init();
+  }
+
+  public toggleMute(): void {
+    this.muted = !this.muted;
+    (<any>this.listener).setMasterVolume(this.muted ? 0 : 1);
   }
 
   public glitch(len: number): void {
