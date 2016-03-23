@@ -2,3 +2,4 @@
 node_modules
 typings
 media/sound/orig
+main.bundle.js.map

@@ -40,7 +40,7 @@ export class Audio {
 
   public getPositionalAudio(name: string): THREE.PositionalAudio {
     let a = new THREE.PositionalAudio(this.listener);
-    a.load(`/media/sound/${name}.mp3`);
+    a.load(`media/sound/${name}.mp3`);
     a.setDistanceModel('exponential');
     a.setRefDistance(20);
     a.setRolloffFactor(1.15);
@@ -92,7 +92,7 @@ export class Audio {
 
   private getAudio(name: string): THREE.Audio {
     let s = new THREE.Audio(this.listener);
-    s.load(`/media/sound/${name}.mp3`);
+    s.load(`media/sound/${name}.mp3`);
     return s;
   }
 }
