@@ -2,14 +2,18 @@ import {Controls} from './controls';
 import {NoSleep} from './nosleep';
 
 export class MobileControls extends Controls {
+  private isPortret: boolean;
+
   constructor() {
     super();
+    this.computeIsPortret();
+    window.addEventListener('resize', () => this.computeIsPortret());
     window.addEventListener('deviceorientation', e => this.computeControls(e));
     new NoSleep().enableOnTouch();
   }
 
   private computeControls(e: DeviceOrientationEvent): void {
-    if (this.isPortret()) this.computePortret(e);
+    if (this.isPortret) this.computePortret(e);
     else this.computeLandscape(e);
     if (Math.abs(this.turn) > 2) this.turn = 0;
   }
@@ -29,7 +33,7 @@ export class MobileControls extends Controls {
     }
   }
 
-  private isPortret(): boolean {
-    return window.innerHeight > window.innerWidth;
+  private computeIsPortret(): void {
+    this.isPortret = window.innerHeight > window.innerWidth;
   }
 }

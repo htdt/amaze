@@ -15,7 +15,10 @@ export class Camera {
     this.camera = new THREE.PerspectiveCamera(
       75, resolution.x / resolution.y, 1, 1000);
     this.camera.position.y = SCALE * 2.5;
-    this.addResizeListener();
+    window.addEventListener('resize', () => {
+      this.camera.aspect = window.innerWidth / window.innerHeight;
+      this.camera.updateProjectionMatrix();
+    });
   }
 
   public move(angle: number, up: boolean, turn: number): void {
@@ -38,13 +41,6 @@ export class Camera {
           this.target.position.x, y2 * (1 - dt), this.target.position.z));
       },
       duration,
-    });
-  }
-
-  private addResizeListener() {
-    window.addEventListener('resize', () => {
-      this.camera.aspect = window.innerWidth / window.innerHeight;
-      this.camera.updateProjectionMatrix();
     });
   }
 

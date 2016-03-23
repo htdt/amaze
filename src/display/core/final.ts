@@ -41,12 +41,12 @@ export class Final {
         this.camera.final(5000);
         return this.player.final(5000);
       })
-      .then(() => this.fadeinHeadPoly(20000))
+      .then(() => this.fadeinHeadPoly(25000))
       .then(() => {
         this.display.addFinalLight();
         this.msg.final();
         this.msg.show();
-        this.display.glitch.play(70);
+        this.display.glitch.play(100);
         this.rndHeadPoly();
         this.rndHeadMaterial();
      });
@@ -89,7 +89,7 @@ export class Final {
           this.msg.show();
           updated = this.player.head.setMaterial(HeadMaterials.Space);
         }
-        if (updated) this.display.glitch.play(70);
+        if (updated) this.display.glitch.play(100);
       },
       duration: 1000, timer: true, loop: true,
     });

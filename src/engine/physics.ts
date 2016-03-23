@@ -81,7 +81,7 @@ export class Physics {
 
   private initImpact(): void {
     this.world.on('impact', (evt) => {
-      for (let i = 0, len = this.interact.length; i < len; i++)
+      for (let i = this.interact.length - 1; i >= 0; i--)
       if ((evt.bodyA.id == this.interact[i].obj1.id && evt.bodyB.id == this.interact[i].obj2.id) ||
         (evt.bodyA.id == this.interact[i].obj2.id && evt.bodyB.id == this.interact[i].obj1.id)) {
         this.interact[i].func();

@@ -31,8 +31,9 @@ export class Animator {
   }
 
   public step(): void {
+    let t = Date.now();
     for (let i = this.animation.length - 1; i >= 0; i--) {
-      let dt = Date.now() - this.animation[i].start;
+      let dt = t - this.animation[i].start;
       if (dt <= this.animation[i].duration) {
         if (!this.animation[i].timer)
           this.animation[i].func(dt / this.animation[i].duration);
