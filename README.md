@@ -7,8 +7,12 @@ It is a maze. It is an experience, based mostly on procedural visual, motion and
 
 For desktop and mobile.
 
-Made by <a href="https://twitter.com/_htdt">Crush</a>.
+![Target](http://htdt.github.io/amaze/media/screens/target.gif)
+![Galaxy](http://htdt.github.io/amaze/media/screens/galaxy.gif)
+![Head](http://htdt.github.io/amaze/media/screens/head.gif)
 
+
+Made by <a href="https://twitter.com/_htdt">Crush</a>.
 Thanks to <a href="http://lophoto.ru/">Mary Lomova</a> and Mikhail "MAD" Dolgoborodov for inspiration and support.
 
 ## Tech
