@@ -13,7 +13,6 @@ import {Final} from './core/final';
 import {Audio} from '../senses/audio';
 import {GameMessage} from '../engine/msg';
 import {initUI} from '../senses/ui';
-import {isMobile} from '../controls/controls';
 
 export const SCALE = 50;
 

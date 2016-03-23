@@ -1,9 +1,11 @@
 import {Controls} from './controls';
+import {NoSleep} from './nosleep';
 
 export class MobileControls extends Controls {
   constructor() {
     super();
     window.addEventListener('deviceorientation', e => this.computeControls(e));
+    new NoSleep().enableOnTouch();
   }
 
   private computeControls(e: DeviceOrientationEvent): void {

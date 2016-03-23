@@ -34,6 +34,5 @@ module.exports = {
     hot: true,
     inline: true,
     port: 9000,
-    host: 'amaze.dev'
   }
 }
