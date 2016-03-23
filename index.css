@@ -1,0 +1,52 @@
+body {
+  background-color: #ffffff;
+  margin: 0px;
+  overflow: hidden;
+}
+
+canvas {width: 100%; height: 100%;}
+
+#msg {
+  position: absolute;
+  font-family: 'Open Sans Condensed', sans-serif;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: .3em;
+}
+
+.msg-game {
+  bottom: 10%;
+  left: 10%;
+  padding-right: 10%;
+  font-size: 4vmin;
+}
+
+.msg-fin {
+  top: 50%;
+  transform: translateY(-50%);
+  text-align: center;
+  font-size: 10vmin;
+  width: 100%;
+}
+
+.menu {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  transform: rotate(-90deg) translate(100%, -100%);
+  transform-origin: right;
+  font-size: 12px;
+  line-height: normal;
+}
+
+.menu a {
+  font-family: 'Open Sans', sans-serif;
+  color: #000;
+  opacity: .45;
+  margin: 0 12px;
+  text-decoration: none;
+}
+
+.menu a:hover { opacity: 1;}
+
+.menu a.off { text-decoration: line-through; }
