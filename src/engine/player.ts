@@ -10,8 +10,7 @@ export class Player extends WorldObject {
 
   constructor(view: THREE.Object3D, body: p2.Body, pos: Vector2d) {
     super(view, body);
-    if (isMobile()) this.keyb = new MobileControls();
-    else this.keyb = new KeyboardControls();
+    this.keyb = isMobile() ? new MobileControls() : new KeyboardControls();
     this.body.position = [pos.x, pos.y];
   }
 
