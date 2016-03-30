@@ -62,7 +62,11 @@ export class Audio {
 
   public stopAll(): void {
     if (!isIOS()) {
-      this.sounds.forEach(x => x.stop());
+      try {
+        this.sounds.forEach(x => x.stop());
+      } catch (err) {
+        console.error(err);
+      }
       this.bgWind.stop();
       this.bgBreath.stop();
     }
