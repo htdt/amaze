@@ -3,7 +3,7 @@ a-maze
 
 <a href="https://htdt.github.io/amaze/">Play</a>
 
-It is a maze. It is an experience, based mostly on procedural visual, motion and audio effects, existential message.
+It is a maze. It is an experience, based on procedural visual, motion and audio effects, existential message.
 
 For desktop and mobile.
 
@@ -12,7 +12,6 @@ For desktop and mobile.
 ![Head](http://htdt.github.io/amaze/media/screens/head.gif)
 
 
-Made by <a href="https://twitter.com/_htdt">Crush</a>.
 Thanks to <a href="http://lophoto.ru/">Mary Lomova</a> and Mikhail "MAD" Dolgoborodov for inspiration and support.
 
 ## Tech
